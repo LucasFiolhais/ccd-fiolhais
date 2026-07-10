@@ -1,6 +1,74 @@
 <script setup lang="ts">
 import { useKbd } from '@nuxt/ui/runtime/composables/useKbd.js';
 
+const events = [
+    {
+        title:'Almoço Comunitário',
+        date:'Data a anunciar',
+        description:'Um almoço para toda a comunidade, com pratos tradicionais e convívio.',
+        location: 'Junta de Freguesia de Louredo',
+        price: '10€',
+        status: 'Em Breve'
+    },
+
+        {
+        title:'Magusto',
+        date:'18 novembro 2026',
+        description:'Celebração do magusto com castanhas assadas, vinho novo e música tradicional.',
+        location: 'Junta de Freguesia de Louredo',
+        price: 'Inscrição Obrigatória',
+        status: 'Em Breve'
+    },
+
+    {
+        title:'Noite de Fados',
+        date:'18 maio 2027',
+        description:'Uma noite de fados com música tradicional e cantores locais.',
+        location: 'Junta de Freguesia de Louredo',
+        price: 'Inscrição Obrigatória',
+        status: 'Em Breve'
+    }
+]
+
+
+const benefits = [
+  {
+    title: 'Apoiar a associação',
+    description: 'A tua contribuição ajuda a manter o CCD ativo e preparado para organizar novas iniciativas.',
+    emoji: '🤝'
+  },
+  {
+    title: 'Preservar tradições',
+    description: 'Ser sócio é ajudar a manter vivas as festas, os convívios e os costumes de Fiolhais.',
+    emoji: '🌿'
+  },
+  {
+    title: 'Participar mais de perto',
+    description: 'No futuro, os sócios poderão consultar quotas, inscrições e informações diretamente no portal.',
+    emoji: '🎟️'
+  }
+]
+
+const posts = [
+    {
+        title: 'Memórias dos convívios de Fiolhais',
+        category: 'Fotografias',
+        description: 'Galerias com fotografias dos convívios, festas e eventos da comunidade de Fiolhais.',
+        emoji: '📸'
+    },
+    {
+        title: 'Rescaldos dos eventos',
+        category: 'Comunidade',
+        description:'Publicações com o resumo dos melhores momentos de cada iniciativa',
+        emoji: '📝'
+    },
+  {
+    title: 'Tradições de Fiolhais',
+    category: 'Cultura',
+    description: 'Um espaço para valorizar a identidade, a história e as tradições locais.',
+    emoji: '🏡'
+  }
+]
 </script>
 
 <template>
@@ -54,44 +122,124 @@ import { useKbd } from '@nuxt/ui/runtime/composables/useKbd.js';
             </UContainer>
         </section>
 
-        <section>
-            <UContainer class="py-16">
+        <section class="py-20">
+            <UContainer>
 
-                <div class="grid gap-6 md:grid-cols-3">
-                    <UCard>
-                        <template #header>
-                            Eventos
-                        </template>
+                <PublicSectionHeader eyebrow="Agenda" title="Próximos Eventos" description="Consulta os próximos convívios, festas, jantares e iniciativas organizadas pelo CCD Fiolhais"
+                />
 
-                        <p class="text-sm text-gray-600">
-                            Divulgação de festas, jantares, convívios e atividades da comunidade.
-                        </p>
-                    </UCard>
+                <div class="mt-12 grid gap-6 md:grid-cols-3">
+                    <PublicEventCard v-for="event in events"
+                    :key="event.title"
+                    :title="event.title"
+                    :date="event.date"
+                    :description="event.description"
+                    :location="event.location"
+                    :price="event.price"
+                    :status="event.status"
+                    />
+                </div>
 
-                    <UCard>
-                        <template #header>
-                            Sócios
-                        </template>
-
-                        <p class="text-sm text-gray-600">
-                            Inscrição de novos sócios e gestão futura de quotas e dados pessoais.
-                        </p>
-                    </UCard>
-
-                    <UCard>
-                        <template #header>
-                            Memórias
-                        </template>
-
-                        <p class="text-sm text-gray-600">
-                            Um moral para fotografias, vídeos e rescaldos dos eventos de Fiolhais.
-                        </p>
-                    </UCard>
-
+                <div class="mt-10 text-center">
+                    <UButton to="/agenda" size="lg" variant="outline">
+                    Ver Todos os Eventos
+                    </UButton>
                 </div>
 
             </UContainer>
         </section>
 
-    </div>
+        <section class="bg-gray-50 py-20">
+
+            <UContainer>
+
+                <PublicSectionHeader eyebrow="Sócios" title="Porque tornar-se sócio?" description="Ser sócio é apoiar diretamente a comunidade, as tradições e o futuro do CCD Fiolhais"
+                />
+
+                <div class="mt-12 grid gap-6 md:grid-cols-3">
+                    <UCard v-for="benefit in benefits" 
+                    :key="benefit.title"
+                    class="h-full"
+                    >
+                    <div class="text-4x1">
+                        {{ benefit.emoji}}
+                    </div>
+
+                    <h3 class="mt-5 text-lg font-bold text-gray-950">
+                        {{ benefit.title }}
+                    </h3>
+
+                    <p class="mt-3 text-sm text-gray-600">
+                        {{ benefit.description }}
+                    </p>
+
+                    </UCard>
+                </div>
+
+                <div class="mt-10 text-center">
+                    <UButton to="/socios/aderir" size="lg">
+                        Tornar-me Sócio 
+                    </UButton>
+                </div>
+
+            </UContainer>
+        </section>
+
+        <section class="py-20">
+            <UContainer>
+
+                <PublicSectionHeader
+                eyebrow="Memórias"
+                title="Mural de Fiolhais"
+                description="Um espaço para guardar fotografias, vídeos e rescaldos dos eventos da nossa comunidade"
+                />
+
+                <div class="mt-12 grid gap-6 md:grid-cols-3">
+                    <PublicMuralCard
+                    v-for="post in posts"
+                    :key="post.title"
+                    :title="post.title"
+                    :category="post.category"
+                    :description="post.description"
+                    :emoji="post.emoji"
+                    />
+                </div>
+
+                <div class="mt-10 text-center">
+                    <UButton to="/mural" size="lg" variant="outline">
+                        Visitar Mural
+                    </UButton>
+                </div>
+
+            </UContainer>
+        </section>
+
+        <section class="py-20">
+            <UContainer>
+                <div class="rounded-3x1 bg-gray-950 px-6 py-14 text-center text-white sm:px-12">
+
+                    <h2 class="text-3.1xl font-bold tracking-tight sm:text-4x1">
+                        Queres ajudar a manter viva a comiunidade de Fiolhais?
+                    </h2>
+
+                    <p class="mx-auto mt-4 max-w-2x1 text-gray-300">
+                        Junta-te a nós e torna-te sócio do CCD Fiolhais. A tua contribuição ajuda a manter as tradições, apoiar os eventos e fortalecer a comunidade.
+                    </p>
+
+                    <div class="mt-8 flex flex-wrap justify-center gap-3">
+                        <UButton to="/socios/Aderir" size="lg" variant="outline">
+                            Tornar-me Sócio
+                        </UButton>
+
+                        <UButton to="agenda" size="lg" color="neutral" variant="outline">
+                            Ver Eventos
+                        </UButton>
+
+                    </div>
+
+                </div>
+            </UContainer>
+        </section>
+
+        </div>
 </template>
