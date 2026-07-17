@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { provideThemeContext } from '@nuxt/ui/runtime/composables/useComponentProps.js';
 import { date } from 'zod';
+import type { EventStatus } from '~/types/event';
 
 const props = defineProps<{
     title: string
@@ -8,12 +9,22 @@ const props = defineProps<{
     description:string
     location: string
     price: string
-    status: string
+    status: EventStatus
+    to: string
 }>()
 
+const statusLabel = computed(() => {
+    if (props.status === 'open') return 'Aberto'
+    if (props.status === 'soon') return 'Em breve'
+    if (props.status === 'sold_out') return 'Esgotado'
+
+    return 'Fechado'
+})
+
 const statusColor = computed(() => {
-    if (props.status === 'Aberto') return 'sucess'
-    if (props.status === 'Encerrado') return 'warning'
+    if (props.status === 'open') return 'success'
+    if (props.status === 'soon') return 'warning'
+    if (props.status === 'sold_out') return 'error'
 
     return 'neutral'
 })
@@ -25,32 +36,32 @@ const statusColor = computed(() => {
         <div class="flex items-start justify-between gap-4">
             <div>
                 <p class="text-sm font-medium text-primary">
-                    {{ date }}
+                    {{ props.date }}
                 </p>
 
                 <h3 class="mt-1 text-lg font-bold text-gray-950">
-                    {{ title }}
+                    {{ props.title }}
                 </h3>
 
             </div>
 
             <UBadge :color="statusColor" variant="soft">
-                {{ status }}
+                {{ statusLabel }}
             </UBadge>
         </div>
     </template>
 
     <p class="text-sm text-gray-600">
-        {{ description }}
+        {{ props.description }}
     </p>
 
     <div class="mt-5 flex items-center justify-between text-sm text-gray-500">
-        <span>{{ location }}</span>
-        <span>{{ price }}</span>
+        <span>{{ props.location }}</span>
+        <span>{{ props.price }}</span>
     </div>
 
     <template #footer>
-        <UButton to="/agenda" variant="outline" block>
+        <UButton :to="to" variant="outline" block>
             Ver Detalhes
         </UButton>
     </template>
