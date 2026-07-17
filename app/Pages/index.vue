@@ -1,34 +1,9 @@
 <script setup lang="ts">
 import { useKbd } from '@nuxt/ui/runtime/composables/useKbd.js';
+import { useEvents } from '~/composables/useEvents'
+const { getFeaturedEvents } = useEvents()
 
-const events = [
-    {
-        title:'Almoço Comunitário',
-        date:'Data a anunciar',
-        description:'Um almoço para toda a comunidade, com pratos tradicionais e convívio.',
-        location: 'Junta de Freguesia de Louredo',
-        price: '10€',
-        status: 'Em Breve'
-    },
-
-        {
-        title:'Magusto',
-        date:'18 novembro 2026',
-        description:'Celebração do magusto com castanhas assadas, vinho novo e música tradicional.',
-        location: 'Junta de Freguesia de Louredo',
-        price: 'Inscrição Obrigatória',
-        status: 'Em Breve'
-    },
-
-    {
-        title:'Noite de Fados',
-        date:'18 maio 2027',
-        description:'Uma noite de fados com música tradicional e cantores locais.',
-        location: 'Junta de Freguesia de Louredo',
-        price: 'Inscrição Obrigatória',
-        status: 'Em Breve'
-    }
-]
+const events = getFeaturedEvents()
 
 
 const benefits = [
@@ -135,8 +110,9 @@ const posts = [
                     :date="event.date"
                     :description="event.description"
                     :location="event.location"
-                    :price="event.price"
+                    :price="event.priceMember"
                     :status="event.status"
+                    :to="`/agenda/${event.slug}`"
                     />
                 </div>
 
