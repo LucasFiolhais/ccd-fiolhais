@@ -31,7 +31,7 @@ const events: EventItem[] = [
     priceNonMember: 'A definir',
     capacity: 80,
     registered: 0,
-    status: 'soon',
+    status: 'open',
     imageEmoji: '🍽️',
     category: 'Convívio'
   },
