@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { useEvents } from '~/composables/useEvents'
+
 const route = useRoute()
 const { getEventBySlug } = useEvents()
+
+const showRegistrationForm = ref(false)
+
+const openRegistrationForm = () => {
+  showRegistrationForm.value = true
+}
 
 const event = computed(() => {
   return getEventBySlug(String(route.params.slug))
@@ -115,15 +122,16 @@ const statusColor = computed(() => {
             <template #footer>
               <div class="space-y-3">
                 <UButton
+                  v-if="event.status === 'open'"
                   block
                   size="lg"
-                  :disabled="event.status !== 'open'"
+                  @click="openRegistrationForm"
                 >
                   Inscrever-me
                 </UButton>
 
                 <p
-                  v-if="event.status !== 'open'"
+                  v-else
                   class="text-center text-xs text-gray-500"
                 >
                   As inscrições ainda não estão disponíveis.
@@ -131,6 +139,13 @@ const statusColor = computed(() => {
               </div>
             </template>
           </UCard>
+
+          <div
+            v-if="showRegistrationForm && event.status === 'open'"
+            class="lg:col-span-2"
+          >
+            <PublicEventRegistrationForm :event-title="event.title" />
+          </div>
         </div>
 
         <UCard
