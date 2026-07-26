@@ -1,22 +1,6 @@
-import type { EventItem } from '~/types/event'
+import type { EventItem, EventRegistration } from '~/types/event'
 
-export const useEvents = () => {
-  const getEvents = () => events
-
-  const getFeaturedEvents = () => events.slice(0, 3)
-
-  const getEventBySlug = (slug: string) => {
-    return events.find((event) => event.slug === slug)
-  }
-
-  return {
-    getEvents,
-    getFeaturedEvents,
-    getEventBySlug
-  }
-}
-
-const events: EventItem[] = [
+const initialEvents: EventItem[] = [
   {
     id: 1,
     title: 'Almoço Comunitário',
@@ -27,8 +11,8 @@ const events: EventItem[] = [
     date: 'Data a anunciar',
     time: '12:30',
     location: 'Fiolhais',
-    priceMember: 'A definir',
-    priceNonMember: 'A definir',
+    priceMember: '12€',
+    priceNonMember: '15€',
     capacity: 80,
     registered: 0,
     status: 'open',
@@ -72,3 +56,120 @@ const events: EventItem[] = [
     category: 'Cultura'
   }
 ]
+
+const initialRegistrations: EventRegistration[] = [
+  {
+    id: 1,
+    eventId: 1,
+    name: 'Ana Carvalho',
+    email: 'ana@email.com',
+    phone: '912 345 678',
+    quantity: 2,
+    isMember: true,
+    totalAmount: 24,
+    paymentStatus: 'paid',
+    registeredAt: '2026-07-20',
+    notes: 'Mesa perto da entrada.'
+  },
+  {
+    id: 2,
+    eventId: 1,
+    name: 'João Martins',
+    email: 'joao@email.com',
+    phone: '913 456 789',
+    quantity: 1,
+    isMember: false,
+    totalAmount: 15,
+    paymentStatus: 'pending',
+    registeredAt: '2026-07-21'
+  },
+  {
+    id: 3,
+    eventId: 1,
+    name: 'Maria Fernandes',
+    email: 'maria@email.com',
+    phone: '914 567 890',
+    quantity: 3,
+    isMember: true,
+    totalAmount: 36,
+    paymentStatus: 'pending',
+    registeredAt: '2026-07-22',
+    notes: 'Uma pessoa vegetariana.'
+  }
+]
+
+export const useEvents = () => {
+  const events = useState<EventItem[]>('events', () => initialEvents)
+  const registrations = useState<EventRegistration[]>('event-registrations', () => initialRegistrations)
+
+  const getEvents = () => {
+    return events.value
+  }
+
+  const getFeaturedEvents = () => {
+    return events.value.slice(0, 3)
+  }
+
+  const getEventBySlug = (slug: string) => {
+    return events.value.find((event) => event.slug === slug)
+  }
+
+  const getRegistrationsByEventId = (eventId: number) => {
+    return registrations.value.filter((registration) => registration.eventId === eventId)
+  }
+
+  const getRegistrationsByEventSlug = (slug: string) => {
+    const event = getEventBySlug(slug)
+
+    if (!event) {
+      return []
+    }
+
+    return getRegistrationsByEventId(event.id)
+  }
+
+  const getEventRegisteredCount = (eventId: number) => {
+    return getRegistrationsByEventId(eventId)
+      .filter((registration) => registration.paymentStatus !== 'cancelled')
+      .reduce((total, registration) => total + registration.quantity, 0)
+  }
+
+  const getEventPendingPaymentsCount = (eventId: number) => {
+    return getRegistrationsByEventId(eventId)
+      .filter((registration) => registration.paymentStatus === 'pending').length
+  }
+
+  const markRegistrationAsPaid = (registrationId: number) => {
+    const registration = registrations.value.find((item) => item.id === registrationId)
+
+    if (!registration) {
+      return
+    }
+
+    registration.paymentStatus = 'paid'
+  }
+
+  const cancelRegistration = (registrationId: number) => {
+    const registration = registrations.value.find((item) => item.id === registrationId)
+
+    if (!registration) {
+      return
+    }
+
+    registration.paymentStatus = 'cancelled'
+  }
+
+  return {
+    events,
+    registrations,
+    getEvents,
+    getFeaturedEvents,
+    getEventBySlug,
+    getRegistrationsByEventId,
+    getRegistrationsByEventSlug,
+    getEventRegisteredCount,
+    getEventPendingPaymentsCount,
+    markRegistrationAsPaid,
+    cancelRegistration
+  }
+}

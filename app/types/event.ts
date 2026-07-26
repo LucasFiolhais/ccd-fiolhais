@@ -1,19 +1,34 @@
 export type EventStatus = 'open' | 'soon' | 'sold_out' | 'closed'
+export type EventRegistrationStatus = 'pending' | 'paid' | 'cancelled'
 
 export interface EventItem {
-    id: number
-    title: string
-    slug: string
-    description: string
-    longDescription: string
-    date: string
-    time: string
-    location: string
-    priceMember: string
-    priceNonMember: string
-    capacity: number
-    registered: number
-    status: EventStatus
-    imageEmoji: string
-    category: string
+  id: number
+  title: string
+  slug: string
+  description: string
+  longDescription: string
+  date: string
+  time: string
+  location: string
+  priceMember: string
+  priceNonMember: string
+  capacity: number
+  registered: number
+  status: EventStatus
+  imageEmoji: string
+  category: string
+}
+
+export interface EventRegistration {
+  id: number
+  eventId: number
+  name: string
+  email: string
+  phone: string
+  quantity: number
+  isMember: boolean
+  totalAmount: number
+  paymentStatus: EventRegistrationStatus
+  registeredAt: string
+  notes?: string
 }
