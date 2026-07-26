@@ -108,19 +108,19 @@ const resetForm = () => {
 
             <UFormField label="Nome Completo" :error="errors.name">
 
-                <UInput v-model="form.name" placeholder="Ex: Ana Carvalho" size="lg"/>
+                <UInput v-model="form.name" placeholder="Insere o teu nome completo" size="lg"/>
 
             </UFormField>
 
             <UFormField label="Email" :error="errors.email">
 
-                <UInput v-model="form.email" type="email" placeholder="email.exemplo.com" size="lg"/>
+                <UInput v-model="form.email" type="email" placeholder="Insere o teu email" size="lg"/>
 
             </UFormField>
 
             <UFormField label="Telefone" :error="errors.phone">
 
-                <UInput v-model="form.phone" placeholder="912 345 678" size="lg"/>
+                <UInput v-model="form.phone" placeholder="Insere o teu telefone" size="lg"/>
 
             </UFormField>
 
