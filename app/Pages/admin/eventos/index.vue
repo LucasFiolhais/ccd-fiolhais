@@ -79,7 +79,7 @@ const totalRegistrations = computed(() => {
         </p>
       </div>
 
-      <UButton>
+      <UButton to="/admin/eventos/novo">
         Novo evento
       </UButton>
     </div>

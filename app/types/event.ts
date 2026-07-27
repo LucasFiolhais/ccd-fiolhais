@@ -43,3 +43,17 @@ export interface CreateEventRegistrationInput {
   totalAmount: number
   notes?: string
 }
+export interface CreateEventInput {
+  title: string
+  description: string
+  longDescription: string
+  date: string
+  time: string
+  location: string
+  priceMember: string
+  priceNonMember: string
+  capacity: number
+  status: EventStatus
+  imageEmoji: string
+  category: string
+}

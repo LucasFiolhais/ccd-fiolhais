@@ -1,4 +1,5 @@
 import type {
+  CreateEventInput,
   CreateEventRegistrationInput,
   EventItem,
   EventRegistration
@@ -188,6 +189,57 @@ export const useEvents = () => {
   return newRegistration
 }
 
+const slugify = (value: string) => {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+}
+
+const generateUniqueSlug = (title: string) => {
+  const baseSlug = slugify(title)
+  let slug = baseSlug
+  let counter = 2
+
+  while (events.value.some((event) => event.slug === slug)) {
+    slug = `${baseSlug}-${counter}`
+    counter++
+  }
+
+  return slug
+}
+
+const createEvent = (input: CreateEventInput) => {
+  const nextId =
+    events.value.length > 0
+      ? Math.max(...events.value.map((event) => event.id)) + 1
+      : 1
+
+  const newEvent: EventItem = {
+    id: nextId,
+    title: input.title,
+    slug: generateUniqueSlug(input.title),
+    description: input.description,
+    longDescription: input.longDescription,
+    date: input.date,
+    time: input.time,
+    location: input.location,
+    priceMember: input.priceMember,
+    priceNonMember: input.priceNonMember,
+    capacity: input.capacity,
+    registered: 0,
+    status: input.status,
+    imageEmoji: input.imageEmoji,
+    category: input.category
+  }
+
+  events.value.push(newEvent)
+
+  return newEvent
+}
+
 return {
   events,
   registrations,
@@ -199,6 +251,7 @@ return {
   getEventRegisteredCount,
   getEventPendingPaymentsCount,
   addRegistration,
+  createEvent,
   markRegistrationAsPaid,
   cancelRegistration
 }
