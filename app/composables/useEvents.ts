@@ -1,4 +1,8 @@
-import type { EventItem, EventRegistration } from '~/types/event'
+import type {
+  CreateEventRegistrationInput,
+  EventItem,
+  EventRegistration
+} from '~/types/event'
 
 const initialEvents: EventItem[] = [
   {
@@ -159,17 +163,43 @@ export const useEvents = () => {
     registration.paymentStatus = 'cancelled'
   }
 
-  return {
-    events,
-    registrations,
-    getEvents,
-    getFeaturedEvents,
-    getEventBySlug,
-    getRegistrationsByEventId,
-    getRegistrationsByEventSlug,
-    getEventRegisteredCount,
-    getEventPendingPaymentsCount,
-    markRegistrationAsPaid,
-    cancelRegistration
+  const addRegistration = (input: CreateEventRegistrationInput) => {
+  const nextId =
+    registrations.value.length > 0
+      ? Math.max(...registrations.value.map((registration) => registration.id)) + 1
+      : 1
+
+  const newRegistration: EventRegistration = {
+    id: nextId,
+    eventId: input.eventId,
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    quantity: input.quantity,
+    isMember: input.isMember,
+    totalAmount: input.totalAmount,
+    paymentStatus: 'pending',
+    registeredAt: new Date().toISOString().slice(0, 10),
+    notes: input.notes?.trim() || undefined
   }
+
+  registrations.value.push(newRegistration)
+
+  return newRegistration
+}
+
+return {
+  events,
+  registrations,
+  getEvents,
+  getFeaturedEvents,
+  getEventBySlug,
+  getRegistrationsByEventId,
+  getRegistrationsByEventSlug,
+  getEventRegisteredCount,
+  getEventPendingPaymentsCount,
+  addRegistration,
+  markRegistrationAsPaid,
+  cancelRegistration
+}
 }

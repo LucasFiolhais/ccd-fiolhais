@@ -2,7 +2,7 @@
 import { useEvents } from '~/composables/useEvents'
 
 const route = useRoute()
-const { getEventBySlug } = useEvents()
+const { getEventBySlug, getEventRegisteredCount } = useEvents()
 
 const showRegistrationForm = ref(false)
 
@@ -32,6 +32,14 @@ const statusColor = computed(() => {
   if (event.value.status === 'sold_out') return 'error'
 
   return 'neutral'
+})
+
+const occupiedSeats = computed(() => {
+  if (!event.value) {
+    return 0
+  }
+
+  return getEventRegisteredCount(event.value.id)
 })
 </script>
 
@@ -114,7 +122,7 @@ const statusColor = computed(() => {
               <div class="flex justify-between gap-4">
                 <span class="text-gray-500">Capacidade</span>
                 <span class="font-medium text-gray-950">
-                  {{ event.registered }} / {{ event.capacity }}
+                  {{ occupiedSeats }} / {{ event.capacity }}
                 </span>
               </div>
             </div>
@@ -144,7 +152,13 @@ const statusColor = computed(() => {
             v-if="showRegistrationForm && event.status === 'open'"
             class="lg:col-span-2"
           >
-            <PublicEventRegistrationForm :event-title="event.title" />
+            <PublicEventRegistrationForm
+              :event-id="event.id"
+              :event-slug="event.slug"
+              :event-title="event.title"
+              :price-member="event.priceMember"
+              :price-non-member="event.priceNonMember"
+/>
           </div>
         </div>
 

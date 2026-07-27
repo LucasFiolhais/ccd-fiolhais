@@ -32,3 +32,14 @@ export interface EventRegistration {
   registeredAt: string
   notes?: string
 }
+
+export interface CreateEventRegistrationInput {
+  eventId: number
+  name: string
+  email: string
+  phone: string
+  quantity: number
+  isMember: boolean
+  totalAmount: number
+  notes?: string
+}
