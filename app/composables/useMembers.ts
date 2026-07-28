@@ -155,12 +155,44 @@ const createMember = (input: CreateMemberInput) => {
   return newMember
 }
 
+const ensureQuotaForMember = (memberNumber: string, year: number, amount = 12) => {
+  const member = getMemberByNumber(memberNumber)
+
+  if (!member) {
+    return
+  }
+
+  const existingQuota = member.quotas.find((quota) => quota.year === year)
+
+  if (existingQuota) {
+    return existingQuota
+  }
+
+  const newQuota = {
+    year,
+    amount,
+    status: 'pending' as const
+  }
+
+  member.quotas.push(newQuota)
+
+  return newQuota
+}
+
+const generateAnnualQuotas = (year: number, amount = 12) => {
+  members.value.forEach((member) => {
+    ensureQuotaForMember(member.number, year, amount)
+  })
+}
+
 return {
   members,
   getMembers,
   getMemberByNumber,
   getCurrentQuota,
   createMember,
-  markQuotaAsPaid
+  markQuotaAsPaid,
+  ensureQuotaForMember,
+  generateAnnualQuotas
 }
 }
