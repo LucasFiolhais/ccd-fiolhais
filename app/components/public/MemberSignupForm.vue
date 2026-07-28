@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { useMembers } from '~/composables/useMembers'
+
+const { createMember } = useMembers()
+
 const submitted = ref(false)
+const createdMemberNumber = ref<string | null>(null)
 
 const form = reactive({
   fullName: '',
@@ -67,6 +72,27 @@ const handleSubmit = () => {
     return
   }
 
+  const notes = [
+    'Pedido submetido através do formulário público.',
+    form.wantsNewsletter
+      ? 'Aceitou receber avisos por email.'
+      : 'Não pretende receber avisos por email.',
+    form.notes.trim() ? `Observações: ${form.notes.trim()}` : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const newMember = createMember({
+    fullName: form.fullName,
+    email: form.email,
+    phone: form.phone,
+    address: form.address,
+    birthDate: form.birthDate,
+    status: 'pending',
+    notes
+  })
+
+  createdMemberNumber.value = newMember.number
   submitted.value = true
 }
 
@@ -79,6 +105,8 @@ const resetForm = () => {
   form.wantsNewsletter = true
   form.acceptsTerms = false
   form.notes = ''
+
+  createdMemberNumber.value = null
 
   clearErrors()
   submitted.value = false
@@ -108,17 +136,32 @@ const resetForm = () => {
       </h3>
 
       <p class="mt-2 text-sm text-green-800">
-        O teu pedido de inscrição foi registado localmente. Mais tarde vamos guardar
-        estes dados na base de dados e permitir à administração aprovar novos sócios.
+        O pedido foi registado como sócio pendente e já aparece no backoffice.
       </p>
 
-      <UButton
-        class="mt-5"
-        variant="outline"
-        @click="resetForm"
+      <p
+        v-if="createdMemberNumber"
+        class="mt-3 text-sm font-medium text-green-900"
       >
-        Enviar outro pedido
-      </UButton>
+        Número provisório de sócio: {{ createdMemberNumber }}
+      </p>
+
+      <div class="mt-5 flex flex-wrap gap-2">
+        <UButton
+          v-if="createdMemberNumber"
+          :to="`/admin/socios/${createdMemberNumber}`"
+          variant="outline"
+        >
+          Ver no backoffice
+        </UButton>
+
+        <UButton
+          variant="ghost"
+          @click="resetForm"
+        >
+          Enviar outro pedido
+        </UButton>
+      </div>
     </div>
 
     <form
@@ -132,7 +175,7 @@ const resetForm = () => {
       >
         <UInput
           v-model="form.fullName"
-          placeholder="Insere o teu nome completo"
+          placeholder="Ex: Lucas Fiolhais"
           size="lg"
         />
       </UFormField>
@@ -145,7 +188,7 @@ const resetForm = () => {
           <UInput
             v-model="form.email"
             type="email"
-            placeholder=" Insere o teu email"
+            placeholder="email@exemplo.com"
             size="lg"
           />
         </UFormField>
@@ -156,7 +199,7 @@ const resetForm = () => {
         >
           <UInput
             v-model="form.phone"
-            placeholder="Insere o teu telefone"
+            placeholder="912 345 678"
             size="lg"
           />
         </UFormField>
@@ -168,7 +211,7 @@ const resetForm = () => {
       >
         <UTextarea
           v-model="form.address"
-          placeholder="Insere a tua morada"
+          placeholder="Rua, número, localidade e código postal"
           size="lg"
         />
       </UFormField>
