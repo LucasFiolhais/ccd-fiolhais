@@ -21,3 +21,13 @@ export interface MemberItem {
   quotas: MemberQuota[]
   notes?: string
 }
+
+export interface CreateMemberInput {
+  fullName: string
+  email: string
+  phone: string
+  address: string
+  birthDate?: string
+  status: MemberStatus
+  notes?: string
+}
