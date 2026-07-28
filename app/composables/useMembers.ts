@@ -1,4 +1,4 @@
-import type { MemberItem } from '~/types/member'
+import type { CreateMemberInput, MemberItem } from '~/types/member'
 
 const initialMembers: MemberItem[] = [
   {
@@ -108,11 +108,59 @@ export const useMembers = () => {
     quota.paidAt = new Date().toISOString().slice(0, 10)
   }
 
-  return {
-    members,
-    getMembers,
-    getMemberByNumber,
-    getCurrentQuota,
-    markQuotaAsPaid
+  const generateNextMemberNumber = () => {
+  const lastNumber = members.value.reduce((max, member) => {
+    const parsedNumber = Number(member.number)
+
+    if (Number.isNaN(parsedNumber)) {
+      return max
+    }
+
+    return Math.max(max, parsedNumber)
+  }, 0)
+
+  return String(lastNumber + 1).padStart(3, '0')
+}
+
+const createMember = (input: CreateMemberInput) => {
+  const currentYear = new Date().getFullYear()
+
+  const nextId =
+    members.value.length > 0
+      ? Math.max(...members.value.map((member) => member.id)) + 1
+      : 1
+
+  const newMember: MemberItem = {
+    id: nextId,
+    number: generateNextMemberNumber(),
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone,
+    address: input.address,
+    birthDate: input.birthDate || undefined,
+    joinedAt: new Date().toISOString().slice(0, 10),
+    status: input.status,
+    notes: input.notes?.trim() || undefined,
+    quotas: [
+      {
+        year: currentYear,
+        amount: 12,
+        status: 'pending'
+      }
+    ]
   }
+
+  members.value.push(newMember)
+
+  return newMember
+}
+
+return {
+  members,
+  getMembers,
+  getMemberByNumber,
+  getCurrentQuota,
+  createMember,
+  markQuotaAsPaid
+}
 }

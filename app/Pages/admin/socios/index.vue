@@ -105,9 +105,9 @@ const overdueMembers = computed(() => {
           Exportar Excel
         </UButton>
 
-        <UButton>
-          Novo sócio
-        </UButton>
+<UButton to="/admin/socios/novo">
+  Novo sócio
+</UButton>
       </div>
     </div>
 
