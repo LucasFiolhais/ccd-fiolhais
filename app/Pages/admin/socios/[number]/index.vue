@@ -167,9 +167,9 @@ const handleMarkQuotaAsPaid = (year: number) => {
 
           <template #footer>
             <div class="flex flex-wrap gap-2">
-              <UButton>
-                Editar dados
-              </UButton>
+<UButton :to="`/admin/socios/${member.number}/editar`">
+  Editar dados
+</UButton>
 
               <UButton variant="outline">
                 Enviar email
