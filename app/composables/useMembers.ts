@@ -1,4 +1,8 @@
-import type { CreateMemberInput, MemberItem } from '~/types/member'
+import type {
+  CreateMemberInput,
+  MemberItem,
+  UpdateMemberInput
+} from '~/types/member' 
 import { usePersistedState } from './usePersistedState'
 const initialMembers: MemberItem[] = [
   {
@@ -185,12 +189,32 @@ const generateAnnualQuotas = (year: number, amount = 12) => {
   })
 }
 
+const updateMember = (memberNumber: string, input: UpdateMemberInput) => {
+  const member = getMemberByNumber(memberNumber)
+
+  if (!member) {
+    return null
+  }
+
+  member.fullName = input.fullName
+  member.email = input.email
+  member.phone = input.phone
+  member.address = input.address
+  member.birthDate = input.birthDate || undefined
+  member.status = input.status
+  member.notes = input.notes?.trim() || undefined
+
+  return member
+}
+
+
 return {
   members,
   getMembers,
   getMemberByNumber,
   getCurrentQuota,
   createMember,
+  updateMember,
   markQuotaAsPaid,
   ensureQuotaForMember,
   generateAnnualQuotas

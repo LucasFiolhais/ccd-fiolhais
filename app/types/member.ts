@@ -31,3 +31,12 @@ export interface CreateMemberInput {
   status: MemberStatus
   notes?: string
 }
+export interface UpdateMemberInput {
+  fullName: string
+  email: string
+  phone: string
+  address: string
+  birthDate?: string
+  status: MemberStatus
+  notes?: string
+}
