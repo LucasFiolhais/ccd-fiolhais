@@ -1,4 +1,5 @@
 import type { CreatePostInput, PostItem } from '~/types/post'
+import { usePersistedState } from './usePersistedState'
 
 const initialPosts: PostItem[] = [
   {
@@ -45,8 +46,7 @@ const initialPosts: PostItem[] = [
 ]
 
 export const usePosts = () => {
-  const posts = useState<PostItem[]>('posts', () => initialPosts)
-
+const posts = usePersistedState<PostItem[]>('posts', initialPosts)
   const getPosts = () => {
     return posts.value
   }

@@ -1,5 +1,5 @@
 import type { CreateMemberInput, MemberItem } from '~/types/member'
-
+import { usePersistedState } from './usePersistedState'
 const initialMembers: MemberItem[] = [
   {
     id: 1,
@@ -77,7 +77,7 @@ const initialMembers: MemberItem[] = [
 ]
 
 export const useMembers = () => {
-  const members = useState<MemberItem[]>('members', () => initialMembers)
+  const members = usePersistedState<MemberItem[]>('members', initialMembers)
 
   const getMembers = () => {
     return members.value
