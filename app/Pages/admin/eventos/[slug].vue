@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { exportRowsToCsv } from '~/utils/exportCsv'
 import { useEvents } from '~/composables/useEvents'
 import type { EventRegistrationStatus, EventStatus } from '~/types/event'
 
@@ -79,6 +80,70 @@ const handleMarkAsPaid = (registrationId: number) => {
 const handleCancelRegistration = (registrationId: number) => {
   cancelRegistration(registrationId)
 }
+
+const handleExportRegistrations = () => {
+  if (!event.value) {
+    return
+  }
+
+  const rows = registrations.value.map((registration) => {
+    return {
+      name: registration.name,
+      email: registration.email,
+      phone: registration.phone,
+      quantity: registration.quantity,
+      isMember: registration.isMember ? 'Sócio' : 'Não sócio',
+      totalAmount: `${registration.totalAmount}€`,
+      paymentStatus: getPaymentLabel(registration.paymentStatus),
+      registeredAt: registration.registeredAt,
+      notes: registration.notes || ''
+    }
+  })
+
+  exportRowsToCsv(
+    `inscritos-${event.value.slug}.csv`,
+    [
+      {
+        key: 'name',
+        label: 'Nome'
+      },
+      {
+        key: 'email',
+        label: 'Email'
+      },
+      {
+        key: 'phone',
+        label: 'Telefone'
+      },
+      {
+        key: 'quantity',
+        label: 'Lugares'
+      },
+      {
+        key: 'isMember',
+        label: 'Tipo'
+      },
+      {
+        key: 'totalAmount',
+        label: 'Valor'
+      },
+      {
+        key: 'paymentStatus',
+        label: 'Pagamento'
+      },
+      {
+        key: 'registeredAt',
+        label: 'Data de inscrição'
+      },
+      {
+        key: 'notes',
+        label: 'Observações'
+      }
+    ],
+    rows
+  )
+}
+
 </script>
 
 <template>
@@ -198,9 +263,12 @@ const handleCancelRegistration = (registrationId: number) => {
               </p>
             </div>
 
-            <UButton variant="outline">
-              Exportar lista
-            </UButton>
+              <UButton
+                variant="outline"
+                @click="handleExportRegistrations"
+              >
+                Exportar lista
+              </UButton>
           </div>
         </template>
 
