@@ -1,3 +1,4 @@
+import { usePersistedState } from './usePersistedState'
 import type {
   CreateEventInput,
   CreateEventRegistrationInput,
@@ -104,8 +105,8 @@ const initialRegistrations: EventRegistration[] = [
 ]
 
 export const useEvents = () => {
-  const events = useState<EventItem[]>('events', () => initialEvents)
-  const registrations = useState<EventRegistration[]>('event-registrations', () => initialRegistrations)
+  const events = usePersistedState<EventItem[]>('events', initialEvents)
+const registrations = usePersistedState<EventRegistration[]>('event-registrations', initialRegistrations)
 
   const getEvents = () => {
     return events.value

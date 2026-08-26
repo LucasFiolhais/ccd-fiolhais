@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useEvents } from '~/composables/useEvents'
 import { useMembers } from '~/composables/useMembers'
+import { clearPersistedProjectData } from '~/composables/usePersistedState'
 
 definePageMeta({
   layout: 'admin'
@@ -150,6 +151,10 @@ const getPaymentColor = (status: string) => {
 
   return 'neutral'
 }
+const handleResetLocalData = async () => {
+  clearPersistedProjectData()
+  await reloadNuxtApp()
+}
 </script>
 
 <template>
@@ -169,18 +174,26 @@ const getPaymentColor = (status: string) => {
         </p>
       </div>
 
-      <div class="flex flex-wrap gap-2">
-        <UButton
-          to="/admin/socios/novo"
-          variant="outline"
-        >
-          Novo sócio
-        </UButton>
+<div class="flex flex-wrap gap-2">
+  <UButton
+    to="/admin/socios/novo"
+    variant="outline"
+  >
+    Novo sócio
+  </UButton>
 
-        <UButton to="/admin/eventos/novo">
-          Novo evento
-        </UButton>
-      </div>
+  <UButton to="/admin/eventos/novo">
+    Novo evento
+  </UButton>
+
+  <UButton
+    color="neutral"
+    variant="soft"
+    @click="handleResetLocalData"
+  >
+    Repor dados locais
+  </UButton>
+</div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
