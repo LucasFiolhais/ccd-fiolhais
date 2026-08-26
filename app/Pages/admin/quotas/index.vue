@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { exportRowsToCsv } from '~/utils/exportCsv'
 import { useMembers } from '~/composables/useMembers'
 import type { MemberItem, QuotaStatus } from '~/types/member'
 
@@ -150,6 +151,63 @@ const handleMarkQuotaAsPaid = (memberNumber: string) => {
 const handleGenerateQuotas = () => {
   generateAnnualQuotas(selectedYearNumber.value)
 }
+
+const handleExportQuotas = () => {
+  const rows = filteredMembers.value.map((member) => {
+    const quota = getMemberQuota(member)
+
+    return {
+      number: member.number,
+      fullName: member.fullName,
+      email: member.email,
+      phone: member.phone,
+      year: selectedYear.value,
+      quotaStatus: getQuotaLabel(quota?.status),
+      amount: quota ? `${quota.amount}€` : '',
+      paidAt: quota?.paidAt || ''
+    }
+  })
+
+  exportRowsToCsv(
+    `quotas-ccd-fiolhais-${selectedYear.value}.csv`,
+    [
+      {
+        key: 'number',
+        label: 'Número'
+      },
+      {
+        key: 'fullName',
+        label: 'Nome'
+      },
+      {
+        key: 'email',
+        label: 'Email'
+      },
+      {
+        key: 'phone',
+        label: 'Telefone'
+      },
+      {
+        key: 'year',
+        label: 'Ano'
+      },
+      {
+        key: 'quotaStatus',
+        label: 'Estado da quota'
+      },
+      {
+        key: 'amount',
+        label: 'Valor'
+      },
+      {
+        key: 'paidAt',
+        label: 'Data de pagamento'
+      }
+    ],
+    rows
+  )
+}
+
 </script>
 
 <template>
@@ -177,9 +235,13 @@ const handleGenerateQuotas = () => {
           Gerar quotas {{ selectedYear }}
         </UButton>
 
-        <UButton variant="soft">
+        <UButton
+          variant="soft"
+          @click="handleExportQuotas"
+        >
           Exportar relatório
         </UButton>
+
       </div>
     </div>
 

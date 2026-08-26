@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { exportRowsToCsv } from '~/utils/exportCsv'
 import { useMembers } from '~/composables/useMembers'
 import type { MemberStatus, QuotaStatus } from '~/types/member'
 
@@ -7,6 +8,8 @@ definePageMeta({
 })
 
 type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+
+const currentYear = new Date().getFullYear()
 
 const { getMembers, getCurrentQuota } = useMembers()
 
@@ -81,6 +84,63 @@ const activeMembers = computed(() => {
 const overdueMembers = computed(() => {
   return members.filter((member) => getCurrentQuota(member)?.status === 'overdue').length
 })
+
+const handleExportMembers = () => {
+  const rows = filteredMembers.value.map((member) => {
+    const currentQuota = getCurrentQuota(member, currentYear)
+
+    return {
+     number: `="${member.number}"`,
+      fullName: member.fullName,
+      email: member.email,
+      phone: `="${member.phone}"`,
+      address: member.address,
+      status: getStatusLabel(member.status),
+      quota: getQuotaLabel(currentQuota?.status),
+      joinedAt: member.joinedAt
+    }
+  })
+
+  exportRowsToCsv(
+    `socios-ccd-fiolhais-${currentYear}.csv`,
+    [
+      {
+        key: 'number',
+        label: 'Número'
+      },
+      {
+        key: 'fullName',
+        label: 'Nome'
+      },
+      {
+        key: 'email',
+        label: 'Email'
+      },
+      {
+        key: 'phone',
+        label: 'Telefone'
+      },
+      {
+        key: 'address',
+        label: 'Morada'
+      },
+      {
+        key: 'status',
+        label: 'Estado'
+      },
+      {
+        key: 'quota',
+        label: `Quota ${currentYear}`
+      },
+      {
+        key: 'joinedAt',
+        label: 'Data de inscrição'
+      }
+    ],
+    rows
+  )
+}
+
 </script>
 
 <template>
@@ -101,8 +161,11 @@ const overdueMembers = computed(() => {
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <UButton variant="outline">
-          Exportar Excel
+        <UButton
+          variant="outline"
+          @click="handleExportMembers"
+          >
+            Exportar CSV
         </UButton>
 
 <UButton to="/admin/socios/novo">
