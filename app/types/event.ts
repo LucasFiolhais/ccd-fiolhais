@@ -57,3 +57,18 @@ export interface CreateEventInput {
   imageEmoji: string
   category: string
 }
+
+export interface UpdateEventInput {
+  title: string
+  description: string
+  longDescription: string
+  date: string
+  time: string
+  location: string
+  priceMember: string
+  priceNonMember: string
+  capacity: number
+  status: EventStatus
+  imageEmoji: string
+  category: string
+}

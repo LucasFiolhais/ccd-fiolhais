@@ -236,9 +236,9 @@ const handleExportRegistrations = () => {
 
         <template #footer>
           <div class="flex flex-wrap gap-2">
-            <UButton>
-              Editar evento
-            </UButton>
+<UButton :to="`/admin/eventos/${event.slug}/editar`">
+  Editar evento
+</UButton>
 
             <UButton
               :to="`/agenda/${event.slug}`"
