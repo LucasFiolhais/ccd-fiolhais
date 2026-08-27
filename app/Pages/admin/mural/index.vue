@@ -160,22 +160,29 @@ const handleToggleStatus = (postId: number, status: PostStatus) => {
               </div>
             </div>
 
-            <div class="flex flex-wrap gap-2">
-              <UButton
-                v-if="post.status === 'published'"
-                :to="`/mural/${post.slug}`"
-                variant="outline"
-              >
-                Ver página
-              </UButton>
+<div class="flex flex-wrap gap-2">
+  <UButton
+    v-if="post.status === 'published'"
+    :to="`/mural/${post.slug}`"
+    variant="outline"
+  >
+    Ver página
+  </UButton>
 
-              <UButton
-                variant="soft"
-                @click="handleToggleStatus(post.id, post.status)"
-              >
-                {{ post.status === 'published' ? 'Despublicar' : 'Publicar' }}
-              </UButton>
-            </div>
+  <UButton
+    :to="`/admin/mural/${post.slug}/editar`"
+    variant="outline"
+  >
+    Editar
+  </UButton>
+
+  <UButton
+    variant="soft"
+    @click="handleToggleStatus(post.id, post.status)"
+  >
+    {{ post.status === 'published' ? 'Despublicar' : 'Publicar' }}
+  </UButton>
+</div>
           </div>
         </div>
       </div>

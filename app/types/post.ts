@@ -30,3 +30,11 @@ export interface CreatePostInput {
   coverEmoji: string
   status: PostStatus
 }
+export interface UpdatePostInput {
+  title: string
+  excerpt: string
+  content: string
+  category: string
+  coverEmoji: string
+  status: PostStatus
+}

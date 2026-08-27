@@ -1,4 +1,8 @@
-import type { CreatePostInput, PostItem } from '~/types/post'
+import type {
+  CreatePostInput,
+  PostItem,
+  UpdatePostInput
+} from '~/types/post'
 import { usePersistedState } from './usePersistedState'
 
 const initialPosts: PostItem[] = [
@@ -129,14 +133,41 @@ const posts = usePersistedState<PostItem[]>('posts', initialPosts)
     post.status = 'draft'
     post.publishedAt = undefined
   }
+  const updatePost = (postSlug: string, input: UpdatePostInput) => {
+  const post = getPostBySlug(postSlug)
 
-  return {
-    posts,
-    getPosts,
-    getPublishedPosts,
-    getPostBySlug,
-    createPost,
-    publishPost,
-    unpublishPost
+  if (!post) {
+    return null
   }
+
+  const wasPublished = post.status === 'published'
+
+  post.title = input.title
+  post.excerpt = input.excerpt
+  post.content = input.content
+  post.category = input.category
+  post.coverEmoji = input.coverEmoji
+  post.status = input.status
+
+  if (input.status === 'published' && !wasPublished) {
+    post.publishedAt = new Date().toISOString().slice(0, 10)
+  }
+
+  if (input.status === 'draft') {
+    post.publishedAt = undefined
+  }
+
+  return post
+}
+
+return {
+  posts,
+  getPosts,
+  getPublishedPosts,
+  getPostBySlug,
+  createPost,
+  updatePost,
+  publishPost,
+  unpublishPost
+}
 }
