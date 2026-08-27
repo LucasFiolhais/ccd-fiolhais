@@ -3,7 +3,8 @@ import type {
   CreateEventInput,
   CreateEventRegistrationInput,
   EventItem,
-  EventRegistration
+  EventRegistration,
+  UpdateEventInput
 } from '~/types/event'
 
 const initialEvents: EventItem[] = [
@@ -241,6 +242,29 @@ const createEvent = (input: CreateEventInput) => {
   return newEvent
 }
 
+const updateEvent = (eventSlug: string, input: UpdateEventInput) => {
+  const event = getEventBySlug(eventSlug)
+
+  if (!event) {
+    return null
+  }
+
+  event.title = input.title
+  event.description = input.description
+  event.longDescription = input.longDescription
+  event.date = input.date
+  event.time = input.time
+  event.location = input.location
+  event.priceMember = input.priceMember
+  event.priceNonMember = input.priceNonMember
+  event.capacity = input.capacity
+  event.status = input.status
+  event.imageEmoji = input.imageEmoji
+  event.category = input.category
+
+  return event
+}
+
 return {
   events,
   registrations,
@@ -253,6 +277,7 @@ return {
   getEventPendingPaymentsCount,
   addRegistration,
   createEvent,
+  updateEvent,
   markRegistrationAsPaid,
   cancelRegistration
 }
