@@ -21,6 +21,10 @@ const links = [
   {
     label: 'Área do Sócio',
     to: '/area-socio'
+  },
+  {
+    label: 'Contactos',
+    to: '/contactos'
   }
 ]
 
