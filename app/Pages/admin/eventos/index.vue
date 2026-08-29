@@ -176,18 +176,14 @@ const totalRegistrations = computed(() => {
         </div>
       </div>
 
-      <div
-        v-if="!filteredEvents.length"
-        class="py-10 text-center"
-      >
-        <p class="font-medium text-gray-950">
-          Nenhum evento encontrado.
-        </p>
-
-        <p class="mt-1 text-sm text-gray-500">
-          Tenta alterar a pesquisa ou o filtro.
-        </p>
-      </div>
+<SharedEmptyState
+  v-if="!filteredEvents.length"
+  icon="🎉"
+  title="Nenhum evento encontrado"
+  description="Tenta alterar a pesquisa ou o filtro aplicado. Também podes criar um novo evento no backoffice."
+  action-label="Criar novo evento"
+  action-to="/admin/eventos/novo"
+/>
     </UCard>
   </UContainer>
 </template>

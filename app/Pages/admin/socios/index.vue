@@ -11,16 +11,33 @@ type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'er
 
 const currentYear = new Date().getFullYear()
 
-const { getMembers, getCurrentQuota } = useMembers()
+const {
+  getMembers,
+  getCurrentQuota
+} = useMembers()
 
 const search = ref('')
 const selectedStatus = ref('Todos')
 const selectedQuota = ref('Todas')
 
-const members = getMembers()
+const members = computed(() => {
+  return getMembers()
+})
 
-const statusOptions = ['Todos', 'Ativo', 'Pendente', 'Inativo']
-const quotaOptions = ['Todas', 'Pago', 'Pendente', 'Em atraso', 'Isento']
+const statusOptions = [
+  'Todos',
+  'Ativo',
+  'Pendente',
+  'Inativo'
+]
+
+const quotaOptions = [
+  'Todas',
+  'Pago',
+  'Pendente',
+  'Em atraso',
+  'Isento'
+]
 
 const getStatusLabel = (status: MemberStatus) => {
   if (status === 'active') return 'Ativo'
@@ -55,12 +72,14 @@ const getQuotaColor = (status?: QuotaStatus): BadgeColor => {
 }
 
 const filteredMembers = computed(() => {
-  return members.filter((member) => {
-    const currentQuota = getCurrentQuota(member)
+  return members.value.filter((member) => {
+    const currentQuota = getCurrentQuota(member, currentYear)
+
+    const searchValue = search.value.toLowerCase()
 
     const matchesSearch =
-      member.fullName.toLowerCase().includes(search.value.toLowerCase()) ||
-      member.email.toLowerCase().includes(search.value.toLowerCase()) ||
+      member.fullName.toLowerCase().includes(searchValue) ||
+      member.email.toLowerCase().includes(searchValue) ||
       member.number.includes(search.value)
 
     const matchesStatus =
@@ -75,14 +94,18 @@ const filteredMembers = computed(() => {
   })
 })
 
-const totalMembers = computed(() => members.length)
+const totalMembers = computed(() => {
+  return members.value.length
+})
 
 const activeMembers = computed(() => {
-  return members.filter((member) => member.status === 'active').length
+  return members.value.filter((member) => member.status === 'active').length
 })
 
 const overdueMembers = computed(() => {
-  return members.filter((member) => getCurrentQuota(member)?.status === 'overdue').length
+  return members.value.filter((member) => {
+    return getCurrentQuota(member, currentYear)?.status === 'overdue'
+  }).length
 })
 
 const handleExportMembers = () => {
@@ -90,7 +113,7 @@ const handleExportMembers = () => {
     const currentQuota = getCurrentQuota(member, currentYear)
 
     return {
-     number: `="${member.number}"`,
+      number: `="${member.number}"`,
       fullName: member.fullName,
       email: member.email,
       phone: `="${member.phone}"`,
@@ -140,7 +163,6 @@ const handleExportMembers = () => {
     rows
   )
 }
-
 </script>
 
 <template>
@@ -164,13 +186,13 @@ const handleExportMembers = () => {
         <UButton
           variant="outline"
           @click="handleExportMembers"
-          >
-            Exportar CSV
+        >
+          Exportar CSV
         </UButton>
 
-<UButton to="/admin/socios/novo">
-  Novo sócio
-</UButton>
+        <UButton to="/admin/socios/novo">
+          Novo sócio
+        </UButton>
       </div>
     </div>
 
@@ -215,7 +237,10 @@ const handleExportMembers = () => {
         />
       </div>
 
-      <div class="overflow-x-auto">
+      <div
+        v-if="filteredMembers.length"
+        class="overflow-x-auto"
+      >
         <table class="min-w-full divide-y divide-gray-200 text-sm">
           <thead>
             <tr class="text-left text-gray-500">
@@ -236,7 +261,7 @@ const handleExportMembers = () => {
               </th>
 
               <th class="px-4 py-3 font-medium">
-                Quota {{ new Date().getFullYear() }}
+                Quota {{ currentYear }}
               </th>
 
               <th class="px-4 py-3 text-right font-medium">
@@ -265,8 +290,13 @@ const handleExportMembers = () => {
               </td>
 
               <td class="px-4 py-4 text-gray-700">
-                <p>{{ member.email }}</p>
-                <p class="text-xs text-gray-500">{{ member.phone }}</p>
+                <p>
+                  {{ member.email }}
+                </p>
+
+                <p class="text-xs text-gray-500">
+                  {{ member.phone }}
+                </p>
               </td>
 
               <td class="px-4 py-4">
@@ -280,10 +310,10 @@ const handleExportMembers = () => {
 
               <td class="px-4 py-4">
                 <UBadge
-                  :color="getQuotaColor(getCurrentQuota(member)?.status)"
+                  :color="getQuotaColor(getCurrentQuota(member, currentYear)?.status)"
                   variant="soft"
                 >
-                  {{ getQuotaLabel(getCurrentQuota(member)?.status) }}
+                  {{ getQuotaLabel(getCurrentQuota(member, currentYear)?.status) }}
                 </UBadge>
               </td>
 
@@ -301,18 +331,14 @@ const handleExportMembers = () => {
         </table>
       </div>
 
-      <div
-        v-if="!filteredMembers.length"
-        class="py-10 text-center"
-      >
-        <p class="font-medium text-gray-950">
-          Nenhum sócio encontrado.
-        </p>
-
-        <p class="mt-1 text-sm text-gray-500">
-          Tenta alterar a pesquisa ou os filtros.
-        </p>
-      </div>
+      <SharedEmptyState
+        v-else
+        icon="👥"
+        title="Nenhum sócio encontrado"
+        description="Tenta alterar a pesquisa ou os filtros aplicados. Também podes criar um novo sócio no backoffice."
+        action-label="Criar novo sócio"
+        action-to="/admin/socios/novo"
+      />
     </UCard>
   </UContainer>
 </template>

@@ -4,67 +4,79 @@ import { date } from 'zod';
 import type { EventStatus } from '~/types/event';
 
 const props = defineProps<{
-    title: string
-    date: string
-    description:string
-    location: string
-    price: string
-    status: EventStatus
-    to: string
+  title: string
+  date: string
+  description: string
+  location: string
+  price: string
+  status: string
+  to: string
 }>()
 
-const statusLabel = computed(() => {
-    if (props.status === 'open') return 'Aberto'
-    if (props.status === 'soon') return 'Em breve'
-    if (props.status === 'sold_out') return 'Esgotado'
+const statusInfo = computed(() => {
+  if (props.status === 'open') {
+    return {
+      label: 'Aberto',
+      class: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    }
+  }
 
-    return 'Fechado'
-})
+  if (props.status === 'soon') {
+    return {
+      label: 'Em breve',
+      class: 'bg-amber-50 text-amber-700 border-amber-200'
+    }
+  }
 
-const statusColor = computed(() => {
-    if (props.status === 'open') return 'success'
-    if (props.status === 'soon') return 'warning'
-    if (props.status === 'sold_out') return 'error'
+  if (props.status === 'sold_out') {
+    return {
+      label: 'Esgotado',
+      class: 'bg-red-50 text-red-700 border-red-200'
+    }
+  }
 
-    return 'neutral'
+  return {
+    label: 'Fechado',
+    class: 'bg-gray-50 text-gray-700 border-gray-200'
+  }
 })
 </script>
 
 <template>
-<UCard class="h-full">
-    <template #header>
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <p class="text-sm font-medium text-primary">
-                    {{ props.date }}
-                </p>
+  <article class="flex h-full flex-col rounded-2xl border border-amber-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-amber-600">
+          {{ props.date }}
+        </p>
 
-                <h3 class="mt-1 text-lg font-bold text-gray-950">
-                    {{ props.title }}
-                </h3>
+        <h3 class="mt-3 text-xl font-bold text-gray-950">
+          {{ props.title }}
+        </h3>
+      </div>
 
-            </div>
-
-            <UBadge :color="statusColor" variant="soft">
-                {{ statusLabel }}
-            </UBadge>
-        </div>
-    </template>
-
-    <p class="text-sm text-gray-600">
-        {{ props.description }}
-    </p>
-
-    <div class="mt-5 flex items-center justify-between text-sm text-gray-500">
-        <span>{{ props.location }}</span>
-        <span>{{ props.price }}</span>
+      <span
+        class="rounded-full border px-3 py-1 text-xs font-semibold"
+        :class="statusInfo.class"
+      >
+        {{ statusInfo.label }}
+      </span>
     </div>
 
-    <template #footer>
-        <UButton :to="to" variant="outline" block>
-            Ver Detalhes
-        </UButton>
-    </template>
+    <p class="mt-5 flex-1 leading-7 text-gray-700">
+      {{ props.description }}
+    </p>
 
-</UCard>
+    <div class="mt-5 flex items-center justify-between gap-4 text-sm text-gray-600">
+      <span>{{ props.location }}</span>
+      <span>{{ props.price }}</span>
+    </div>
+
+    <NuxtLink
+      :to="props.to"
+      class="mt-6 inline-flex items-center justify-center rounded-xl border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500 hover:text-black"
+    >
+      Ver detalhes
+    </NuxtLink>
+  </article>
 </template>

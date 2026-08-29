@@ -1,9 +1,13 @@
+<script setup lang="ts">
+import AppSidebar from '~/components/admin/AppSidebar.vue'
+</script>
+
 <template>
   <div class="min-h-screen bg-gray-50 text-gray-900">
     <div class="flex min-h-screen">
-      <AdminAppSidebar />
+      <AppSidebar />
 
-      <div class="min-w-0 flex-1">
+      <div class="admin-light-theme min-w-0 flex-1 bg-gray-50">
         <header class="border-b border-gray-200 bg-white">
           <UContainer class="flex h-16 items-center justify-between">
             <div>
@@ -24,6 +28,10 @@
             </UButton>
           </UContainer>
         </header>
+
+        <UContainer class="pt-6">
+          <SharedMockDataNotice />
+        </UContainer>
 
         <main>
           <slot />

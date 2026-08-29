@@ -209,18 +209,14 @@ const handleDeletePost = (postSlug: string, postTitle: string) => {
         </div>
       </div>
 
-      <div
-        v-if="!filteredPosts.length"
-        class="py-10 text-center"
-      >
-        <p class="font-medium text-gray-950">
-          Nenhuma publicação encontrada.
-        </p>
-
-        <p class="mt-1 text-sm text-gray-500">
-          Tenta alterar a pesquisa ou o filtro.
-        </p>
-      </div>
+<SharedEmptyState
+  v-if="!filteredPosts.length"
+  icon="📝"
+  title="Nenhuma publicação encontrada"
+  description="Tenta alterar a pesquisa ou o filtro aplicado. Também podes criar uma nova publicação para o mural."
+  action-label="Criar publicação"
+  action-to="/admin/mural/novo"
+/>
     </UCard>
   </UContainer>
 </template>

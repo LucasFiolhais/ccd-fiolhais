@@ -34,47 +34,48 @@ const isActive = (to: string) => {
 </script>
 
 <template>
-  <aside class="flex min-h-screen w-72 shrink-0 flex-col border-r border-gray-200 bg-white">
-    <div class="border-b border-gray-200 p-6">
-      <NuxtLink
-        to="/admin"
-        class="flex items-center gap-3"
+  <aside class="hidden min-h-screen w-72 border-r border-gray-800 bg-[var(--ccd-black)] p-5 text-white lg:flex lg:flex-col">
+    <NuxtLink
+      to="/admin"
+      class="flex items-center gap-3"
+    >
+      <img
+        src="/images/ccd-logo.png"
+        alt="Logótipo do CCD Fiolhais"
+        class="h-16 w-auto"
       >
-        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white">
-          CCD
-        </div>
 
-        <div>
-          <p class="font-bold text-gray-950">
-            Backoffice
-          </p>
+      <div>
+        <p class="font-bold leading-tight">
+          CCD Fiolhais
+        </p>
 
-          <p class="text-xs text-gray-500">
-            CCD Fiolhais
-          </p>
-        </div>
-      </NuxtLink>
-    </div>
+        <p class="text-xs text-gray-400">
+          Backoffice
+        </p>
+      </div>
+    </NuxtLink>
 
-    <nav class="flex-1 space-y-1 p-4">
+    <nav class="mt-10 space-y-2">
       <NuxtLink
         v-for="link in links"
         :key="link.to"
         :to="link.to"
         class="block rounded-xl px-4 py-3 text-sm font-medium transition"
         :class="isActive(link.to)
-          ? 'bg-primary text-white'
-          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-950'"
+          ? 'ccd-gold-gradient text-black'
+          : 'text-gray-300 hover:bg-white/10 hover:text-white'"
       >
         {{ link.label }}
       </NuxtLink>
     </nav>
 
-    <div class="border-t border-gray-200 p-4">
+    <div class="mt-auto">
       <UButton
         to="/"
         variant="outline"
         block
+        class="border-amber-500 text-amber-300 hover:bg-amber-500 hover:text-black"
       >
         Ver site público
       </UButton>

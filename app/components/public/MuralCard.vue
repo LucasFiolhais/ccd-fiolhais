@@ -4,38 +4,35 @@ defineProps<{
   category: string
   description: string
   emoji: string
-  to?: string
+  to: string
 }>()
 </script>
 
 <template>
-  <UCard class="h-full overflow-hidden">
-    <div class="mb-5 flex h-40 items-center justify-center rounded-xl bg-gray-100">
-      <span class="text-4xl">
-        {{ emoji }}
-      </span>
+  <article class="flex h-full flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <div class="flex h-40 items-center justify-center bg-gray-50 text-5xl">
+      {{ emoji }}
     </div>
 
-    <p class="text-sm font-medium text-primary">
-      {{ category }}
-    </p>
+    <div class="flex flex-1 flex-col p-6">
+      <p class="text-sm font-semibold text-amber-600">
+        {{ category }}
+      </p>
 
-    <h3 class="mt-2 text-lg font-bold text-gray-950">
-      {{ title }}
-    </h3>
+      <h3 class="mt-3 text-xl font-bold text-gray-950">
+        {{ title }}
+      </h3>
 
-    <p class="mt-3 text-sm text-gray-600">
-      {{ description }}
-    </p>
+      <p class="mt-3 flex-1 leading-7 text-gray-700">
+        {{ description }}
+      </p>
 
-    <template #footer>
-      <UButton
-        :to="to || '/mural'"
-        variant="link"
-        class="px-0"
+      <NuxtLink
+        :to="to"
+        class="mt-6 inline-flex items-center justify-center rounded-xl border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500 hover:text-black"
       >
         Ver no mural
-      </UButton>
-    </template>
-  </UCard>
+      </NuxtLink>
+    </div>
+  </article>
 </template>
