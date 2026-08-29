@@ -9,7 +9,12 @@ definePageMeta({
 type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
 const route = useRoute()
-const { getMemberByNumber, markQuotaAsPaid } = useMembers()
+const {
+  getMemberByNumber,
+  markQuotaAsPaid,
+  deactivateMember,
+  deleteMember
+} = useMembers()
 
 const member = computed(() => {
   return getMemberByNumber(String(route.params.number))
@@ -54,6 +59,45 @@ const handleMarkQuotaAsPaid = (year: number) => {
 
   markQuotaAsPaid(member.value.number, year)
 }
+
+const router = useRouter()
+
+const handleDeactivateMember = () => {
+  if (!member.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Tens a certeza que queres inativar o sócio ${member.value.fullName}?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  deactivateMember(member.value.number)
+}
+
+const handleDeleteMember = async () => {
+  if (!member.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Tens a certeza que queres apagar o sócio ${member.value.fullName}? Esta ação remove o sócio dos dados locais.`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  const deleted = deleteMember(member.value.number)
+
+  if (deleted) {
+    await router.push('/admin/socios')
+  }
+}
+
 </script>
 
 <template>
@@ -165,17 +209,33 @@ const handleMarkQuotaAsPaid = (year: number) => {
             </p>
           </div>
 
-          <template #footer>
-            <div class="flex flex-wrap gap-2">
-<UButton :to="`/admin/socios/${member.number}/editar`">
-  Editar dados
-</UButton>
+<template #footer>
+  <div class="flex flex-wrap gap-2">
+    <UButton :to="`/admin/socios/${member.number}/editar`">
+      Editar dados
+    </UButton>
 
-              <UButton variant="outline">
-                Enviar email
-              </UButton>
-            </div>
-          </template>
+    <UButton variant="outline">
+      Enviar email
+    </UButton>
+
+    <UButton
+      color="neutral"
+      variant="soft"
+      @click="handleDeactivateMember"
+    >
+      Inativar sócio
+    </UButton>
+
+    <UButton
+      color="error"
+      variant="soft"
+      @click="handleDeleteMember"
+    >
+      Apagar sócio
+    </UButton>
+  </div>
+</template>
         </UCard>
       </div>
 

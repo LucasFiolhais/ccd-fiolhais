@@ -159,6 +159,17 @@ const posts = usePersistedState<PostItem[]>('posts', initialPosts)
 
   return post
 }
+const deletePost = (postSlug: string) => {
+  const postIndex = posts.value.findIndex((post) => post.slug === postSlug)
+
+  if (postIndex === -1) {
+    return false
+  }
+
+  posts.value.splice(postIndex, 1)
+
+  return true
+}
 
 return {
   posts,
@@ -168,6 +179,7 @@ return {
   createPost,
   updatePost,
   publishPost,
-  unpublishPost
+  unpublishPost,
+  deletePost
 }
 }

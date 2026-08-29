@@ -16,7 +16,8 @@ const {
   getRegistrationsByEventSlug,
   getEventRegisteredCount,
   markRegistrationAsPaid,
-  cancelRegistration
+  cancelRegistration,
+  deleteEvent
 } = useEvents()
 
 const event = computed(() => {
@@ -144,6 +145,28 @@ const handleExportRegistrations = () => {
   )
 }
 
+const router = useRouter()
+
+const handleDeleteEvent = async () => {
+  if (!event.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Tens a certeza que queres apagar o evento "${event.value.title}"? As inscrições associadas também serão removidas dos dados locais.`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  const deleted = deleteEvent(event.value.slug)
+
+  if (deleted) {
+    await router.push('/admin/eventos')
+  }
+}
+
 </script>
 
 <template>
@@ -234,20 +257,28 @@ const handleExportRegistrations = () => {
           </div>
         </div>
 
-        <template #footer>
-          <div class="flex flex-wrap gap-2">
-<UButton :to="`/admin/eventos/${event.slug}/editar`">
-  Editar evento
-</UButton>
+<template #footer>
+  <div class="flex flex-wrap gap-2">
+    <UButton :to="`/admin/eventos/${event.slug}/editar`">
+      Editar evento
+    </UButton>
 
-            <UButton
-              :to="`/agenda/${event.slug}`"
-              variant="outline"
-            >
-              Ver página pública
-            </UButton>
-          </div>
-        </template>
+    <UButton
+      :to="`/agenda/${event.slug}`"
+      variant="outline"
+    >
+      Ver página pública
+    </UButton>
+
+    <UButton
+      color="error"
+      variant="soft"
+      @click="handleDeleteEvent"
+    >
+      Apagar evento
+    </UButton>
+  </div>
+</template>
       </UCard>
 
       <UCard>
