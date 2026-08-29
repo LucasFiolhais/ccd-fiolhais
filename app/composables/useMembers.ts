@@ -207,6 +207,29 @@ const updateMember = (memberNumber: string, input: UpdateMemberInput) => {
   return member
 }
 
+const deactivateMember = (memberNumber: string) => {
+  const member = getMemberByNumber(memberNumber)
+
+  if (!member) {
+    return null
+  }
+
+  member.status = 'inactive'
+
+  return member
+}
+
+const deleteMember = (memberNumber: string) => {
+  const memberExists = members.value.some((member) => member.number === memberNumber)
+
+  if (!memberExists) {
+    return false
+  }
+
+  members.value = members.value.filter((member) => member.number !== memberNumber)
+
+  return true
+}
 
 return {
   members,
@@ -217,6 +240,8 @@ return {
   updateMember,
   markQuotaAsPaid,
   ensureQuotaForMember,
-  generateAnnualQuotas
+  generateAnnualQuotas,
+  deactivateMember,
+  deleteMember
 }
 }

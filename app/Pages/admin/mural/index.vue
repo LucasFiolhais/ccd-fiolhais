@@ -11,7 +11,8 @@ type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'er
 const {
   getPosts,
   publishPost,
-  unpublishPost
+  unpublishPost,
+  deletePost
 } = usePosts()
 
 const search = ref('')
@@ -65,6 +66,19 @@ const handleToggleStatus = (postId: number, status: PostStatus) => {
 
   publishPost(postId)
 }
+
+const handleDeletePost = (postSlug: string, postTitle: string) => {
+  const confirmed = window.confirm(
+    `Tens a certeza que queres apagar a publicação "${postTitle}"?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  deletePost(postSlug)
+}
+
 </script>
 
 <template>
@@ -181,6 +195,14 @@ const handleToggleStatus = (postId: number, status: PostStatus) => {
     @click="handleToggleStatus(post.id, post.status)"
   >
     {{ post.status === 'published' ? 'Despublicar' : 'Publicar' }}
+  </UButton>
+
+  <UButton
+    color="error"
+    variant="soft"
+    @click="handleDeletePost(post.slug, post.title)"
+  >
+    Apagar
   </UButton>
 </div>
           </div>

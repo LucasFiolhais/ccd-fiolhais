@@ -265,6 +265,21 @@ const updateEvent = (eventSlug: string, input: UpdateEventInput) => {
   return event
 }
 
+const deleteEvent = (eventSlug: string) => {
+  const event = getEventBySlug(eventSlug)
+
+  if (!event) {
+    return false
+  }
+
+  events.value = events.value.filter((item) => item.slug !== eventSlug)
+  registrations.value = registrations.value.filter((registration) => {
+    return registration.eventId !== event.id
+  })
+
+  return true
+}
+
 return {
   events,
   registrations,
@@ -278,6 +293,7 @@ return {
   addRegistration,
   createEvent,
   updateEvent,
+  deleteEvent,
   markRegistrationAsPaid,
   cancelRegistration
 }
