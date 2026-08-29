@@ -1,2 +1,164 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+:root {
+  --ccd-gold: #c99a1e;
+  --ccd-gold-light: #f4d26a;
+  --ccd-gold-dark: #8a6410;
+  --ccd-black: #080808;
+  --ccd-dark: #0f172a;
+  --ccd-soft: #f8f4ea;
+
+  --ccd-on-dark: #f8fafc;
+  --ccd-on-dark-muted: #cbd5e1;
+  --ccd-on-dark-soft: #94a3b8;
+}
+
+.ccd-gold-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--ccd-gold-dark),
+    var(--ccd-gold-light),
+    var(--ccd-gold)
+  );
+}
+
+.ccd-text-gold {
+  color: var(--ccd-gold);
+}
+
+.ccd-border-gold {
+  border-color: var(--ccd-gold);
+}
+
+.ccd-bg-dark,
+.ccd-dark-card {
+  background-color: var(--ccd-dark) !important;
+  color: var(--ccd-on-dark) !important;
+}
+
+/* Apanha cartões escuros usados no projeto */
+.ccd-dark-card,
+.ccd-bg-dark,
+[class*="bg-slate-900"],
+[class*="bg-gray-900"],
+[class*="bg-slate-950"],
+[class*="bg-gray-950"],
+[class*="bg-[#0f172a]"],
+[class*="bg-[#111827]"],
+[class*="bg-[var(--ccd-dark)]"],
+[class*="bg-[var(--ccd-black)]"] {
+  color: var(--ccd-on-dark) !important;
+}
+
+/* Títulos e labels dentro de cartões escuros */
+.ccd-dark-card :where(h1, h2, h3, h4, h5, h6, label, strong),
+.ccd-bg-dark :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-slate-900"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-gray-900"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-slate-950"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-gray-950"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-[#0f172a]"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-[#111827]"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-[var(--ccd-dark)]"] :where(h1, h2, h3, h4, h5, h6, label, strong),
+[class*="bg-[var(--ccd-black)]"] :where(h1, h2, h3, h4, h5, h6, label, strong) {
+  color: var(--ccd-on-dark) !important;
+}
+
+/* Classes antigas de texto escuro dentro de cartões escuros */
+.ccd-dark-card :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+.ccd-bg-dark :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-slate-900"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-gray-900"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-slate-950"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-gray-950"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-[#0f172a]"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-[#111827]"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-[var(--ccd-dark)]"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700),
+[class*="bg-[var(--ccd-black)]"] :where(.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700) {
+  color: var(--ccd-on-dark) !important;
+}
+
+/* Textos secundários dentro de cartões escuros */
+.ccd-dark-card :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+.ccd-bg-dark :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-slate-900"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-gray-900"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-slate-950"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-gray-950"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-[#0f172a]"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-[#111827]"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-[var(--ccd-dark)]"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400),
+[class*="bg-[var(--ccd-black)]"] :where(p, small, .text-gray-600, .text-gray-500, .text-gray-400) {
+  color: var(--ccd-on-dark-muted) !important;
+}
+
+/* Mantém caixas claras legíveis dentro de cartões escuros */
+.ccd-dark-card :where(.bg-white, .bg-gray-50, .bg-gray-100),
+.ccd-bg-dark :where(.bg-white, .bg-gray-50, .bg-gray-100),
+[class*="bg-slate-900"] :where(.bg-white, .bg-gray-50, .bg-gray-100),
+[class*="bg-gray-900"] :where(.bg-white, .bg-gray-50, .bg-gray-100),
+[class*="bg-[#0f172a]"] :where(.bg-white, .bg-gray-50, .bg-gray-100),
+[class*="bg-[#111827]"] :where(.bg-white, .bg-gray-50, .bg-gray-100) {
+  color: #0f172a !important;
+}
+
+.ccd-dark-card :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500),
+.ccd-bg-dark :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500),
+[class*="bg-slate-900"] :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500),
+[class*="bg-gray-900"] :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500),
+[class*="bg-[#0f172a]"] :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500),
+[class*="bg-[#111827]"] :where(.bg-white, .bg-gray-50, .bg-gray-100) :where(h1, h2, h3, h4, p, small, label, strong, .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500) {
+  color: #0f172a !important;
+}
+.admin-light-theme {
+  color-scheme: light;
+
+  --ui-bg: #ffffff;
+  --ui-bg-muted: #f8fafc;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: #f1f5f9;
+
+  --ui-text: #0f172a;
+  --ui-text-muted: #475569;
+  --ui-text-toned: #334155;
+  --ui-text-dimmed: #64748b;
+  --ui-text-highlighted: #020617;
+
+  --ui-border: #e5e7eb;
+  --ui-border-muted: #f1f5f9;
+  --ui-border-accented: #d1d5db;
+}
+
+.admin-light-theme :where(.text-gray-950, .text-gray-900, .text-gray-800) {
+  color: #0f172a !important;
+}
+
+.admin-light-theme :where(.text-gray-700, .text-gray-600, .text-gray-500) {
+  color: #475569 !important;
+}
+
+.admin-light-theme :where(input, textarea, select) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.admin-light-theme :where(input::placeholder, textarea::placeholder) {
+  color: #94a3b8 !important;
+}
+
+.admin-light-theme :where(table) {
+  color: #0f172a;
+}
+
+.admin-light-theme :where(thead tr) {
+  color: #64748b !important;
+}
+
+.admin-light-theme :where(tbody tr) {
+  background-color: #ffffff;
+}
+
+.admin-light-theme :where(.bg-gray-50) {
+  background-color: #f8fafc !important;
+}

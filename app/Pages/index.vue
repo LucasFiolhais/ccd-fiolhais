@@ -87,7 +87,7 @@ const benefits = [
     <section class="bg-gradient-to-b from-gray-50 to-white">
       <UContainer class="grid gap-12 py-20 lg:grid-cols-2 lg:items-center">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-primary">
+          <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
             Centro Cultural e Desportivo de Fiolhais
           </p>
 
@@ -95,7 +95,7 @@ const benefits = [
             A casa da comunidade, das tradições e dos eventos de Fiolhais.
           </h1>
 
-          <p class="mt-6 max-w-xl text-lg text-gray-600">
+          <p class="mt-6 max-w-xl text-lg leading-8 text-gray-700">
             Uma plataforma para divulgar eventos, gerir sócios, organizar inscrições
             e guardar a memória da nossa terra.
           </p>
@@ -118,40 +118,40 @@ const benefits = [
           </div>
         </div>
 
-        <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div class="rounded-2xl bg-gray-100 p-8">
-            <p class="text-sm font-medium text-gray-500">
+        <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div class="rounded-2xl bg-gray-50 p-8">
+            <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
               Próximo destaque
             </p>
 
-            <h2 class="mt-3 text-2xl font-bold">
+            <h2 class="mt-3 text-2xl font-bold text-gray-950">
               {{ events[0]?.title || 'Agenda cultural de Fiolhais' }}
             </h2>
 
-            <p class="mt-3 text-gray-600">
+            <p class="mt-3 leading-7 text-gray-700">
               {{ events[0]?.description || 'Consulta os próximos eventos organizados pelo CCD.' }}
             </p>
 
             <div
               v-if="events[0]"
-              class="mt-5 grid gap-3 text-sm text-gray-600 sm:grid-cols-2"
+              class="mt-5 grid gap-3 text-sm sm:grid-cols-2"
             >
-              <div class="rounded-xl bg-white p-3">
+              <div class="rounded-xl border border-gray-200 bg-white p-4">
                 <p class="text-gray-500">
                   Data
                 </p>
 
-                <p class="font-medium text-gray-950">
+                <p class="mt-1 font-semibold text-gray-950">
                   {{ events[0].date }}
                 </p>
               </div>
 
-              <div class="rounded-xl bg-white p-3">
+              <div class="rounded-xl border border-gray-200 bg-white p-4">
                 <p class="text-gray-500">
                   Local
                 </p>
 
-                <p class="font-medium text-gray-950">
+                <p class="mt-1 font-semibold text-gray-950">
                   {{ events[0].location }}
                 </p>
               </div>
@@ -172,8 +172,10 @@ const benefits = [
     <section class="py-12">
       <UContainer>
         <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          <UCard>
-            <p class="text-sm font-medium text-gray-500">
+          <div class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 h-1 w-12 rounded-full ccd-gold-gradient" />
+
+            <p class="text-sm font-medium text-gray-600">
               Sócios registados
             </p>
 
@@ -184,10 +186,12 @@ const benefits = [
             <p class="mt-2 text-sm text-gray-500">
               {{ activeMembers }} ativos
             </p>
-          </UCard>
+          </div>
 
-          <UCard>
-            <p class="text-sm font-medium text-gray-500">
+          <div class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 h-1 w-12 rounded-full ccd-gold-gradient" />
+
+            <p class="text-sm font-medium text-gray-600">
               Quotas pagas
             </p>
 
@@ -198,10 +202,12 @@ const benefits = [
             <p class="mt-2 text-sm text-gray-500">
               Ano {{ currentYear }}
             </p>
-          </UCard>
+          </div>
 
-          <UCard>
-            <p class="text-sm font-medium text-gray-500">
+          <div class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 h-1 w-12 rounded-full ccd-gold-gradient" />
+
+            <p class="text-sm font-medium text-gray-600">
               Eventos em destaque
             </p>
 
@@ -212,10 +218,12 @@ const benefits = [
             <p class="mt-2 text-sm text-gray-500">
               {{ openEvents }} com inscrições abertas
             </p>
-          </UCard>
+          </div>
 
-          <UCard>
-            <p class="text-sm font-medium text-gray-500">
+          <div class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+            <div class="mb-5 h-1 w-12 rounded-full ccd-gold-gradient" />
+
+            <p class="text-sm font-medium text-gray-600">
               Lugares reservados
             </p>
 
@@ -226,7 +234,7 @@ const benefits = [
             <p class="mt-2 text-sm text-gray-500">
               Inscrições em eventos
             </p>
-          </UCard>
+          </div>
         </div>
       </UContainer>
     </section>
@@ -239,19 +247,88 @@ const benefits = [
           description="Consulta os próximos convívios, festas, jantares e iniciativas organizadas pelo CCD de Fiolhais."
         />
 
-        <div class="mt-12 grid gap-6 md:grid-cols-3">
-          <PublicEventCard
+        <div
+          v-if="events.length"
+          class="mt-12 grid gap-6 md:grid-cols-3"
+        >
+          <article
             v-for="event in events"
             :key="event.id"
-            :title="event.title"
-            :date="event.date"
-            :description="event.description"
-            :location="event.location"
-            :price="event.priceMember"
-            :status="event.status"
-            :to="`/agenda/${event.slug}`"
-          />
+            class="flex h-full flex-col rounded-2xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm font-semibold text-amber-600">
+                  {{ event.date }}
+                </p>
+
+                <h3 class="mt-3 text-xl font-bold text-gray-950">
+                  {{ event.title }}
+                </h3>
+              </div>
+
+              <UBadge
+                v-if="event.status === 'open'"
+                color="success"
+                variant="soft"
+              >
+                Aberto
+              </UBadge>
+
+              <UBadge
+                v-else-if="event.status === 'soon'"
+                color="warning"
+                variant="soft"
+              >
+                Em breve
+              </UBadge>
+
+              <UBadge
+                v-else-if="event.status === 'sold_out'"
+                color="error"
+                variant="soft"
+              >
+                Esgotado
+              </UBadge>
+
+              <UBadge
+                v-else
+                color="neutral"
+                variant="soft"
+              >
+                Fechado
+              </UBadge>
+            </div>
+
+            <p class="mt-5 flex-1 leading-7 text-gray-700">
+              {{ event.description }}
+            </p>
+
+            <div class="mt-5 flex items-center justify-between gap-4 text-sm text-gray-600">
+              <span>{{ event.location }}</span>
+              <span>{{ event.priceMember }}</span>
+            </div>
+
+            <UButton
+              :to="`/agenda/${event.slug}`"
+              class="mt-6"
+              variant="outline"
+              block
+            >
+              Ver detalhes
+            </UButton>
+          </article>
         </div>
+
+        <SharedEmptyState
+          v-else
+          class="mt-12"
+          icon="📅"
+          title="Ainda não existem eventos em destaque"
+          description="Quando forem criados eventos em destaque, vão aparecer nesta zona da página inicial."
+          action-label="Ver agenda"
+          action-to="/agenda"
+        />
 
         <div class="mt-10 text-center">
           <UButton
@@ -274,12 +351,12 @@ const benefits = [
         />
 
         <div class="mt-12 grid gap-6 md:grid-cols-3">
-          <UCard
+          <div
             v-for="benefit in benefits"
             :key="benefit.title"
-            class="h-full"
+            class="h-full rounded-2xl border border-amber-200 bg-white p-6 shadow-sm"
           >
-            <div class="text-4xl">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-3xl">
               {{ benefit.emoji }}
             </div>
 
@@ -287,10 +364,10 @@ const benefits = [
               {{ benefit.title }}
             </h3>
 
-            <p class="mt-3 text-sm text-gray-600">
+            <p class="mt-3 leading-7 text-gray-700">
               {{ benefit.description }}
             </p>
-          </UCard>
+          </div>
         </div>
 
         <div class="mt-10 text-center">
@@ -316,29 +393,48 @@ const benefits = [
           v-if="latestPosts.length"
           class="mt-12 grid gap-6 md:grid-cols-3"
         >
-          <PublicMuralCard
+          <article
             v-for="post in latestPosts"
             :key="post.id"
-            :title="post.title"
-            :category="post.category"
-            :description="post.excerpt"
-            :emoji="post.coverEmoji"
-            :to="`/mural/${post.slug}`"
-          />
+            class="flex h-full flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm"
+          >
+            <div class="flex h-40 items-center justify-center bg-gray-50 text-5xl">
+              {{ post.coverEmoji }}
+            </div>
+
+            <div class="flex flex-1 flex-col p-6">
+              <p class="text-sm font-semibold text-amber-600">
+                {{ post.category }}
+              </p>
+
+              <h3 class="mt-3 text-xl font-bold text-gray-950">
+                {{ post.title }}
+              </h3>
+
+              <p class="mt-3 flex-1 leading-7 text-gray-700">
+                {{ post.excerpt }}
+              </p>
+
+              <UButton
+                :to="`/mural/${post.slug}`"
+                class="mt-6"
+                variant="outline"
+              >
+                Ver no mural
+              </UButton>
+            </div>
+          </article>
         </div>
 
-        <UCard
+        <SharedEmptyState
           v-else
-          class="mt-12 text-center"
-        >
-          <p class="font-medium text-gray-950">
-            Ainda não existem publicações no mural.
-          </p>
-
-          <p class="mt-2 text-sm text-gray-600">
-            Quando forem publicadas memórias, vão aparecer aqui.
-          </p>
-        </UCard>
+          class="mt-12"
+          icon="🖼️"
+          title="Ainda não existem publicações no mural"
+          description="Quando forem publicadas memórias, fotografias ou rescaldos, vão aparecer nesta zona."
+          action-label="Visitar o mural"
+          action-to="/mural"
+        />
 
         <div class="mt-10 text-center">
           <UButton
@@ -354,12 +450,16 @@ const benefits = [
 
     <section class="py-20">
       <UContainer>
-        <div class="rounded-3xl bg-gray-950 px-6 py-14 text-center text-white sm:px-12">
-          <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
+        <div class="rounded-3xl bg-gray-950 px-6 py-14 text-center text-white shadow-sm sm:px-12">
+          <p class="text-sm font-semibold uppercase tracking-wide text-amber-400">
+            Junta-te à comunidade
+          </p>
+
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Queres ajudar a manter viva a comunidade de Fiolhais?
           </h2>
 
-          <p class="mx-auto mt-4 max-w-2xl text-gray-300">
+          <p class="mx-auto mt-4 max-w-2xl leading-7 text-gray-300">
             Junta-te ao CCD, participa nos eventos e ajuda a preservar as tradições,
             os encontros e as memórias da nossa terra.
           </p>

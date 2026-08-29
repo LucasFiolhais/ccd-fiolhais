@@ -7,8 +7,10 @@ defineProps<{
 </script>
 
 <template>
-  <UCard>
-    <p class="text-sm font-medium text-gray-500">
+  <div class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+    <div class="mb-5 h-1 w-12 rounded-full ccd-gold-gradient" />
+
+    <p class="text-sm font-medium text-gray-600">
       {{ label }}
     </p>
 
@@ -22,5 +24,5 @@ defineProps<{
     >
       {{ description }}
     </p>
-  </UCard>
+  </div>
 </template>
