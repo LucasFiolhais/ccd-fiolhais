@@ -6,8 +6,19 @@ export default defineNuxtConfig({
   },
 
   modules: [
-    '@nuxt/ui',
+    '@nuxt/ui'
   ],
 
-  css: ['~/assets/css/main.css']
+  css: [
+    '~/assets/css/main.css'
+  ],
+
+  runtimeConfig: {
+    public: {
+      siteName: 'CCD Fiolhais',
+      siteUrl: 'http://localhost:3000',
+      supabaseUrl: '',
+      supabaseAnonKey: ''
+    }
+  }
 })
