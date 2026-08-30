@@ -1,186 +1,183 @@
 <script setup lang="ts">
 import { useEvents } from '~/composables/useEvents'
+import { useSupabaseEvents } from '~/composables/useSupabaseEvents'
 
 const route = useRoute()
-const { getEventBySlug, getEventRegisteredCount } = useEvents()
 
-const showRegistrationForm = ref(false)
+const { getEventBySlug } = useEvents()
+const { getPublishedEventBySlug } = useSupabaseEvents()
 
-const openRegistrationForm = () => {
-  showRegistrationForm.value = true
-}
+const slug = computed(() => {
+  return String(route.params.slug)
+})
+
+const {
+  data: supabaseEvent,
+  pending
+} = await useAsyncData(`public-event-${slug.value}`, () => {
+  return getPublishedEventBySlug(slug.value)
+})
+
+const mockEvent = computed(() => {
+  return getEventBySlug(slug.value)
+})
 
 const event = computed(() => {
-  return getEventBySlug(String(route.params.slug))
+  return supabaseEvent.value || mockEvent.value || null
 })
 
-const statusLabel = computed(() => {
-  if (!event.value) return ''
-
-  if (event.value.status === 'open') return 'Aberto'
-  if (event.value.status === 'soon') return 'Em breve'
-  if (event.value.status === 'sold_out') return 'Esgotado'
-
-  return 'Fechado'
+const isUsingSupabase = computed(() => {
+  return Boolean(supabaseEvent.value)
 })
 
-const statusColor = computed(() => {
-  if (!event.value) return 'neutral'
-
-  if (event.value.status === 'open') return 'success'
-  if (event.value.status === 'soon') return 'warning'
-  if (event.value.status === 'sold_out') return 'error'
-
-  return 'neutral'
-})
-
-const occupiedSeats = computed(() => {
-  if (!event.value) {
-    return 0
+useHead(() => {
+  return {
+    title: event.value?.title || 'Evento'
   }
-
-  return getEventRegisteredCount(event.value.id)
 })
 </script>
 
 <template>
   <div>
-    <section class="bg-gray-50">
-      <UContainer class="py-16">
-        <UButton
+    <section class="bg-gray-50 py-16">
+      <UContainer>
+        <NuxtLink
           to="/agenda"
-          variant="link"
-          class="mb-8 px-0"
+          class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
         >
           ← Voltar à agenda
-        </UButton>
+        </NuxtLink>
 
         <div
-          v-if="event"
-          class="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start"
+          v-if="pending"
+          class="mt-8 rounded-2xl border border-amber-200 bg-white p-8 text-gray-700 shadow-sm"
+        >
+          A carregar evento...
+        </div>
+
+        <div
+          v-else-if="event"
+          class="mt-8 grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start"
         >
           <div>
-            <div class="mb-6 flex h-64 items-center justify-center rounded-3xl bg-white text-7xl shadow-sm">
-              {{ event.imageEmoji }}
-            </div>
-
-            <p class="text-sm font-semibold uppercase tracking-wide text-primary">
+            <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
               {{ event.category }}
             </p>
 
-            <h1 class="mt-3 text-4xl font-bold tracking-tight text-gray-950">
+            <h1 class="mt-3 text-4xl font-bold text-gray-950">
               {{ event.title }}
             </h1>
 
-            <p class="mt-5 text-lg leading-8 text-gray-600">
+            <p class="mt-4 text-lg leading-8 text-gray-700">
+              {{ event.description }}
+            </p>
+
+            <div
+              v-if="isUsingSupabase"
+              class="mt-6 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+            >
+              Evento carregado da base de dados oficial
+            </div>
+
+            <div
+              v-else
+              class="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
+            >
+              Evento de demonstração
+            </div>
+          </div>
+
+          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+            <div class="flex h-40 items-center justify-center rounded-2xl bg-gray-50 text-6xl">
+              {{ event.imageEmoji }}
+            </div>
+
+            <div class="mt-6 space-y-4">
+              <div class="rounded-2xl bg-gray-50 p-4">
+                <p class="text-sm text-gray-500">
+                  Data
+                </p>
+
+                <p class="mt-1 font-semibold text-gray-950">
+                  {{ event.date }}
+                </p>
+              </div>
+
+              <div class="rounded-2xl bg-gray-50 p-4">
+                <p class="text-sm text-gray-500">
+                  Hora
+                </p>
+
+                <p class="mt-1 font-semibold text-gray-950">
+                  {{ event.time }}
+                </p>
+              </div>
+
+              <div class="rounded-2xl bg-gray-50 p-4">
+                <p class="text-sm text-gray-500">
+                  Local
+                </p>
+
+                <p class="mt-1 font-semibold text-gray-950">
+                  {{ event.location }}
+                </p>
+              </div>
+
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div class="rounded-2xl bg-gray-50 p-4">
+                  <p class="text-sm text-gray-500">
+                    Sócios
+                  </p>
+
+                  <p class="mt-1 font-semibold text-gray-950">
+                    {{ event.priceMember }}
+                  </p>
+                </div>
+
+                <div class="rounded-2xl bg-gray-50 p-4">
+                  <p class="text-sm text-gray-500">
+                    Não sócios
+                  </p>
+
+                  <p class="mt-1 font-semibold text-gray-950">
+                    {{ event.priceNonMember }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-3xl border border-amber-200 bg-white p-6 leading-8 text-gray-700 shadow-sm lg:col-span-2">
+            <h2 class="text-2xl font-bold text-gray-950">
+              Sobre o evento
+            </h2>
+
+            <p class="mt-4 whitespace-pre-line">
               {{ event.longDescription }}
             </p>
           </div>
 
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <h2 class="text-xl font-bold">
-                  Informações do evento
-                </h2>
+          <div class="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm lg:col-span-2">
+            <h2 class="text-2xl font-bold">
+              Inscrições online
+            </h2>
 
-                <UBadge
-                  :color="statusColor"
-                  variant="soft"
-                >
-                  {{ statusLabel }}
-                </UBadge>
-              </div>
-            </template>
-
-            <div class="space-y-4 text-sm">
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Data</span>
-                <span class="font-medium text-gray-950">{{ event.date }}</span>
-              </div>
-
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Hora</span>
-                <span class="font-medium text-gray-950">{{ event.time }}</span>
-              </div>
-
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Local</span>
-                <span class="font-medium text-gray-950">{{ event.location }}</span>
-              </div>
-
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Preço sócio</span>
-                <span class="font-medium text-gray-950">{{ event.priceMember }}</span>
-              </div>
-
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Preço não sócio</span>
-                <span class="font-medium text-gray-950">{{ event.priceNonMember }}</span>
-              </div>
-
-              <div class="flex justify-between gap-4">
-                <span class="text-gray-500">Capacidade</span>
-                <span class="font-medium text-gray-950">
-                  {{ occupiedSeats }} / {{ event.capacity }}
-                </span>
-              </div>
-            </div>
-
-            <template #footer>
-              <div class="space-y-3">
-                <UButton
-                  v-if="event.status === 'open'"
-                  block
-                  size="lg"
-                  @click="openRegistrationForm"
-                >
-                  Inscrever-me
-                </UButton>
-
-                <p
-                  v-else
-                  class="text-center text-xs text-gray-500"
-                >
-                  As inscrições ainda não estão disponíveis.
-                </p>
-              </div>
-            </template>
-          </UCard>
-
-          <div
-            v-if="showRegistrationForm && event.status === 'open'"
-            class="lg:col-span-2"
-          >
-            <PublicEventRegistrationForm
-              :event-id="event.id"
-              :event-slug="event.slug"
-              :event-title="event.title"
-              :price-member="event.priceMember"
-              :price-non-member="event.priceNonMember"
-/>
+            <p class="mt-3 leading-7">
+              A ligação das inscrições ao Supabase será implementada na próxima fase.
+              Por agora, esta página já consegue carregar eventos publicados da base de dados oficial.
+            </p>
           </div>
         </div>
 
-        <UCard
+        <SharedEmptyState
           v-else
-          class="text-center"
-        >
-          <h1 class="text-2xl font-bold">
-            Evento não encontrado
-          </h1>
-
-          <p class="mt-2 text-gray-600">
-            O evento que procuras não existe ou foi removido.
-          </p>
-
-          <UButton
-            to="/agenda"
-            class="mt-6"
-          >
-            Voltar à agenda
-          </UButton>
-        </UCard>
+          class="mt-8"
+          icon="📅"
+          title="Evento não encontrado"
+          description="O evento que procuras não existe, ainda não está publicado ou foi removido."
+          action-label="Voltar à agenda"
+          action-to="/agenda"
+        />
       </UContainer>
     </section>
   </div>

@@ -1,8 +1,9 @@
-export type EventStatus = 'open' | 'soon' | 'sold_out' | 'closed'
+export type EventStatus = 'draft' | 'open' | 'soon' | 'sold_out' | 'closed'
+
 export type EventRegistrationStatus = 'pending' | 'paid' | 'cancelled'
 
 export interface EventItem {
-  id: number
+  id: string | number
   title: string
   slug: string
   description: string
@@ -20,8 +21,8 @@ export interface EventItem {
 }
 
 export interface EventRegistration {
-  id: number
-  eventId: number
+  id: string | number
+  eventId: string | number
   name: string
   email: string
   phone: string
@@ -34,7 +35,7 @@ export interface EventRegistration {
 }
 
 export interface CreateEventRegistrationInput {
-  eventId: number
+  eventId: string | number
   name: string
   email: string
   phone: string
@@ -43,6 +44,7 @@ export interface CreateEventRegistrationInput {
   totalAmount: number
   notes?: string
 }
+
 export interface CreateEventInput {
   title: string
   description: string
