@@ -8,6 +8,7 @@ export const useSupabaseClient = () => {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Supabase ainda não está configurado. Verifica o ficheiro .env.')
+    return null
   }
 
   return createClient(supabaseUrl, supabaseAnonKey)

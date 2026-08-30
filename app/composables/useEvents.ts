@@ -105,9 +105,28 @@ const initialRegistrations: EventRegistration[] = [
   }
 ]
 
+const getNextNumericId = (items: Array<{ id: string | number }>) => {
+  const numericIds = items
+    .map((item) => Number(item.id))
+    .filter((id) => Number.isFinite(id))
+
+  if (!numericIds.length) {
+    return 1
+  }
+
+  return Math.max(...numericIds) + 1
+}
+
+const areIdsEqual = (firstId: string | number, secondId: string | number) => {
+  return String(firstId) === String(secondId)
+}
+
 export const useEvents = () => {
   const events = usePersistedState<EventItem[]>('events', initialEvents)
-const registrations = usePersistedState<EventRegistration[]>('event-registrations', initialRegistrations)
+  const registrations = usePersistedState<EventRegistration[]>(
+    'event-registrations',
+    initialRegistrations
+  )
 
   const getEvents = () => {
     return events.value
@@ -121,8 +140,10 @@ const registrations = usePersistedState<EventRegistration[]>('event-registration
     return events.value.find((event) => event.slug === slug)
   }
 
-  const getRegistrationsByEventId = (eventId: number) => {
-    return registrations.value.filter((registration) => registration.eventId === eventId)
+  const getRegistrationsByEventId = (eventId: string | number) => {
+    return registrations.value.filter((registration) => {
+      return areIdsEqual(registration.eventId, eventId)
+    })
   }
 
   const getRegistrationsByEventSlug = (slug: string) => {
@@ -135,19 +156,22 @@ const registrations = usePersistedState<EventRegistration[]>('event-registration
     return getRegistrationsByEventId(event.id)
   }
 
-  const getEventRegisteredCount = (eventId: number) => {
+  const getEventRegisteredCount = (eventId: string | number) => {
     return getRegistrationsByEventId(eventId)
       .filter((registration) => registration.paymentStatus !== 'cancelled')
       .reduce((total, registration) => total + registration.quantity, 0)
   }
 
-  const getEventPendingPaymentsCount = (eventId: number) => {
+  const getEventPendingPaymentsCount = (eventId: string | number) => {
     return getRegistrationsByEventId(eventId)
-      .filter((registration) => registration.paymentStatus === 'pending').length
+      .filter((registration) => registration.paymentStatus === 'pending')
+      .length
   }
 
-  const markRegistrationAsPaid = (registrationId: number) => {
-    const registration = registrations.value.find((item) => item.id === registrationId)
+  const markRegistrationAsPaid = (registrationId: string | number) => {
+    const registration = registrations.value.find((item) => {
+      return areIdsEqual(item.id, registrationId)
+    })
 
     if (!registration) {
       return
@@ -156,8 +180,10 @@ const registrations = usePersistedState<EventRegistration[]>('event-registration
     registration.paymentStatus = 'paid'
   }
 
-  const cancelRegistration = (registrationId: number) => {
-    const registration = registrations.value.find((item) => item.id === registrationId)
+  const cancelRegistration = (registrationId: string | number) => {
+    const registration = registrations.value.find((item) => {
+      return areIdsEqual(item.id, registrationId)
+    })
 
     if (!registration) {
       return
@@ -167,134 +193,128 @@ const registrations = usePersistedState<EventRegistration[]>('event-registration
   }
 
   const addRegistration = (input: CreateEventRegistrationInput) => {
-  const nextId =
-    registrations.value.length > 0
-      ? Math.max(...registrations.value.map((registration) => registration.id)) + 1
-      : 1
+    const nextId = getNextNumericId(registrations.value)
 
-  const newRegistration: EventRegistration = {
-    id: nextId,
-    eventId: input.eventId,
-    name: input.name,
-    email: input.email,
-    phone: input.phone,
-    quantity: input.quantity,
-    isMember: input.isMember,
-    totalAmount: input.totalAmount,
-    paymentStatus: 'pending',
-    registeredAt: new Date().toISOString().slice(0, 10),
-    notes: input.notes?.trim() || undefined
+    const newRegistration: EventRegistration = {
+      id: nextId,
+      eventId: input.eventId,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      quantity: input.quantity,
+      isMember: input.isMember,
+      totalAmount: input.totalAmount,
+      paymentStatus: 'pending',
+      registeredAt: new Date().toISOString().slice(0, 10),
+      notes: input.notes?.trim() || undefined
+    }
+
+    registrations.value.push(newRegistration)
+
+    return newRegistration
   }
 
-  registrations.value.push(newRegistration)
-
-  return newRegistration
-}
-
-const slugify = (value: string) => {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
-}
-
-const generateUniqueSlug = (title: string) => {
-  const baseSlug = slugify(title)
-  let slug = baseSlug
-  let counter = 2
-
-  while (events.value.some((event) => event.slug === slug)) {
-    slug = `${baseSlug}-${counter}`
-    counter++
+  const slugify = (value: string) => {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '')
   }
 
-  return slug
-}
+  const generateUniqueSlug = (title: string) => {
+    const baseSlug = slugify(title)
+    let slug = baseSlug
+    let counter = 2
 
-const createEvent = (input: CreateEventInput) => {
-  const nextId =
-    events.value.length > 0
-      ? Math.max(...events.value.map((event) => event.id)) + 1
-      : 1
+    while (events.value.some((event) => event.slug === slug)) {
+      slug = `${baseSlug}-${counter}`
+      counter++
+    }
 
-  const newEvent: EventItem = {
-    id: nextId,
-    title: input.title,
-    slug: generateUniqueSlug(input.title),
-    description: input.description,
-    longDescription: input.longDescription,
-    date: input.date,
-    time: input.time,
-    location: input.location,
-    priceMember: input.priceMember,
-    priceNonMember: input.priceNonMember,
-    capacity: input.capacity,
-    registered: 0,
-    status: input.status,
-    imageEmoji: input.imageEmoji,
-    category: input.category
+    return slug
   }
 
-  events.value.push(newEvent)
+  const createEvent = (input: CreateEventInput) => {
+    const nextId = getNextNumericId(events.value)
 
-  return newEvent
-}
+    const newEvent: EventItem = {
+      id: nextId,
+      title: input.title,
+      slug: generateUniqueSlug(input.title),
+      description: input.description,
+      longDescription: input.longDescription,
+      date: input.date,
+      time: input.time,
+      location: input.location,
+      priceMember: input.priceMember,
+      priceNonMember: input.priceNonMember,
+      capacity: input.capacity,
+      registered: 0,
+      status: input.status,
+      imageEmoji: input.imageEmoji,
+      category: input.category
+    }
 
-const updateEvent = (eventSlug: string, input: UpdateEventInput) => {
-  const event = getEventBySlug(eventSlug)
+    events.value.push(newEvent)
 
-  if (!event) {
-    return null
+    return newEvent
   }
 
-  event.title = input.title
-  event.description = input.description
-  event.longDescription = input.longDescription
-  event.date = input.date
-  event.time = input.time
-  event.location = input.location
-  event.priceMember = input.priceMember
-  event.priceNonMember = input.priceNonMember
-  event.capacity = input.capacity
-  event.status = input.status
-  event.imageEmoji = input.imageEmoji
-  event.category = input.category
+  const updateEvent = (eventSlug: string, input: UpdateEventInput) => {
+    const event = getEventBySlug(eventSlug)
 
-  return event
-}
+    if (!event) {
+      return null
+    }
 
-const deleteEvent = (eventSlug: string) => {
-  const event = getEventBySlug(eventSlug)
+    event.title = input.title
+    event.description = input.description
+    event.longDescription = input.longDescription
+    event.date = input.date
+    event.time = input.time
+    event.location = input.location
+    event.priceMember = input.priceMember
+    event.priceNonMember = input.priceNonMember
+    event.capacity = input.capacity
+    event.status = input.status
+    event.imageEmoji = input.imageEmoji
+    event.category = input.category
 
-  if (!event) {
-    return false
+    return event
   }
 
-  events.value = events.value.filter((item) => item.slug !== eventSlug)
-  registrations.value = registrations.value.filter((registration) => {
-    return registration.eventId !== event.id
-  })
+  const deleteEvent = (eventSlug: string) => {
+    const event = getEventBySlug(eventSlug)
 
-  return true
-}
+    if (!event) {
+      return false
+    }
 
-return {
-  events,
-  registrations,
-  getEvents,
-  getFeaturedEvents,
-  getEventBySlug,
-  getRegistrationsByEventId,
-  getRegistrationsByEventSlug,
-  getEventRegisteredCount,
-  getEventPendingPaymentsCount,
-  addRegistration,
-  createEvent,
-  updateEvent,
-  deleteEvent,
-  markRegistrationAsPaid,
-  cancelRegistration
-}
+    events.value = events.value.filter((item) => item.slug !== eventSlug)
+    registrations.value = registrations.value.filter((registration) => {
+      return !areIdsEqual(registration.eventId, event.id)
+    })
+
+    return true
+  }
+
+  return {
+    events,
+    registrations,
+    getEvents,
+    getFeaturedEvents,
+    getEventBySlug,
+    getRegistrationsByEventId,
+    getRegistrationsByEventSlug,
+    getEventRegisteredCount,
+    getEventPendingPaymentsCount,
+    addRegistration,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    markRegistrationAsPaid,
+    cancelRegistration
+  }
 }
