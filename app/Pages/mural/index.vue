@@ -1,13 +1,39 @@
 <script setup lang="ts">
 import { usePosts } from '~/composables/usePosts'
+import { useSupabasePosts } from '~/composables/useSupabasePosts'
 
-const { getPublishedPosts } = usePosts()
+useHead({
+  title: 'Mural'
+})
+
+const { getPublishedPosts: getMockPublishedPosts } = usePosts()
+const { getPublishedPosts: getSupabasePublishedPosts } = useSupabasePosts()
 
 const searchTerm = ref('')
 const selectedCategory = ref('Todos')
 
+const {
+  data: supabasePosts,
+  pending,
+  refresh
+} = await useAsyncData('published-posts', () => {
+  return getSupabasePublishedPosts()
+})
+
+const mockPosts = computed(() => {
+  return getMockPublishedPosts()
+})
+
 const posts = computed(() => {
-  return getPublishedPosts()
+  if (supabasePosts.value && supabasePosts.value.length) {
+    return supabasePosts.value
+  }
+
+  return mockPosts.value
+})
+
+const isUsingSupabase = computed(() => {
+  return Boolean(supabasePosts.value && supabasePosts.value.length)
 })
 
 const categoryOptions = computed(() => {
@@ -38,6 +64,10 @@ const filteredPosts = computed(() => {
 const selectCategory = (category: string) => {
   selectedCategory.value = category
 }
+
+const handleRefreshPosts = async () => {
+  await refresh()
+}
 </script>
 
 <template>
@@ -55,6 +85,20 @@ const selectCategory = (category: string) => {
         <p class="mt-4 max-w-3xl text-lg leading-8 text-gray-700">
           Fotografias, vídeos, rescaldos e publicações dos eventos e iniciativas do CCD de Fiolhais.
         </p>
+
+        <div
+          v-if="isUsingSupabase"
+          class="mt-6 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+        >
+          Publicações carregadas da base de dados oficial
+        </div>
+
+        <div
+          v-else
+          class="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
+        >
+          A mostrar dados de demonstração
+        </div>
       </UContainer>
     </section>
 
@@ -85,7 +129,14 @@ const selectCategory = (category: string) => {
         </div>
 
         <div
-          v-if="filteredPosts.length"
+          v-if="pending"
+          class="mt-8 rounded-2xl border border-amber-200 bg-white p-8 text-center text-gray-700 shadow-sm"
+        >
+          A carregar publicações...
+        </div>
+
+        <div
+          v-else-if="filteredPosts.length"
           class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
         >
           <PublicMuralCard
@@ -108,6 +159,16 @@ const selectCategory = (category: string) => {
           action-label="Voltar ao mural"
           action-to="/mural"
         />
+
+        <div class="mt-8 text-center">
+          <button
+            type="button"
+            class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+            @click="handleRefreshPosts"
+          >
+            Recarregar mural
+          </button>
+        </div>
       </UContainer>
     </section>
   </div>

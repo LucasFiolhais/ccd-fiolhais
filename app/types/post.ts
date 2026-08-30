@@ -1,15 +1,16 @@
 export type PostStatus = 'draft' | 'published'
+
 export type PostMediaType = 'image' | 'video'
 
 export interface PostMedia {
-  id: number
+  id: string | number
   type: PostMediaType
   url: string
   caption?: string
 }
 
 export interface PostItem {
-  id: number
+  id: string | number
   title: string
   slug: string
   excerpt: string
@@ -30,6 +31,7 @@ export interface CreatePostInput {
   coverEmoji: string
   status: PostStatus
 }
+
 export interface UpdatePostInput {
   title: string
   excerpt: string
