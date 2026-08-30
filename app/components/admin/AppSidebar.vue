@@ -21,6 +21,10 @@ const links = [
   {
     label: 'Mural',
     to: '/admin/mural'
+  },
+  {
+    label: 'Sistema',
+    to: '/admin/sistema'
   }
 ]
 
