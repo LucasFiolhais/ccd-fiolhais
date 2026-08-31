@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { useMembers } from '~/composables/useMembers'
+import { useSupabaseMemberApplications } from '~/composables/useSupabaseMemberApplications'
 
-const { createMember } = useMembers()
+useHead({
+  title: 'Tornar-me Sócio'
+})
+
+const { createMemberApplication } = useSupabaseMemberApplications()
 
 const form = reactive({
   fullName: '',
@@ -22,7 +26,9 @@ const errors = reactive({
   acceptsDataTreatment: ''
 })
 
-const submittedMemberNumber = ref('')
+const isSubmitting = ref(false)
+const successMessage = ref('')
+const submitError = ref('')
 
 const benefits = [
   {
@@ -48,6 +54,8 @@ const clearErrors = () => {
   errors.phone = ''
   errors.address = ''
   errors.acceptsDataTreatment = ''
+  submitError.value = ''
+  successMessage.value = ''
 }
 
 const validateForm = () => {
@@ -95,22 +103,32 @@ const resetForm = () => {
   form.acceptsDataTreatment = false
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!validateForm()) {
     return
   }
 
-  const member = createMember({
-    fullName: form.fullName,
-    email: form.email,
-    phone: form.phone,
-    address: form.address,
+  isSubmitting.value = true
+
+  const result = await createMemberApplication({
+    fullName: form.fullName.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    address: form.address.trim(),
     birthDate: form.birthDate || undefined,
-    notes: form.notes || undefined,
-    status: 'pending'
+    notes: form.notes.trim() || undefined,
+    wantsNotifications: form.wantsNotifications,
+    acceptsDataTreatment: form.acceptsDataTreatment
   })
 
-  submittedMemberNumber.value = member.number
+  isSubmitting.value = false
+
+  if (!result.success) {
+    submitError.value = result.error || 'Não foi possível enviar o pedido de inscrição.'
+    return
+  }
+
+  successMessage.value = 'O teu pedido de inscrição foi enviado com sucesso. A direção do CCD Fiolhais irá analisar o pedido assim que possível.'
   resetForm()
 }
 </script>
@@ -125,7 +143,7 @@ const handleSubmit = () => {
           </p>
 
           <h1 class="mt-3 text-4xl font-bold text-gray-950">
-            Torne-se sócio do CCD de Fiolhais
+            Torna-te sócio do CCD de Fiolhais
           </h1>
 
           <p class="mt-6 max-w-2xl text-lg leading-8 text-gray-700">
@@ -157,6 +175,17 @@ const handleSubmit = () => {
               </div>
             </div>
           </div>
+
+          <div class="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
+            <p class="font-bold">
+              Pedido sujeito a validação
+            </p>
+
+            <p class="mt-2">
+              O envio deste formulário não confirma automaticamente a inscrição como sócio.
+              O pedido será analisado pela direção do CCD Fiolhais.
+            </p>
+          </div>
         </div>
 
         <div class="rounded-3xl border border-amber-200 bg-white shadow-sm">
@@ -165,22 +194,35 @@ const handleSubmit = () => {
               Pedido de inscrição de sócio
             </h2>
 
-            <p class="mt-2 text-gray-600">
-              Preenche os teus dados. A direção do CCD poderá depois validar o pedido.
+            <p class="mt-2 leading-7 text-gray-700">
+              Preenche os teus dados. O pedido será guardado na base de dados oficial
+              para posterior validação.
             </p>
           </div>
 
           <div
-            v-if="submittedMemberNumber"
+            v-if="successMessage"
             class="m-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
           >
             <p class="font-bold">
-              Pedido enviado com sucesso.
+              Pedido enviado
             </p>
 
             <p class="mt-2">
-              O teu pedido foi registado com o número de sócio
-              <strong>{{ submittedMemberNumber }}</strong>.
+              {{ successMessage }}
+            </p>
+          </div>
+
+          <div
+            v-if="submitError"
+            class="m-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+          >
+            <p class="font-bold">
+              Erro ao enviar pedido
+            </p>
+
+            <p class="mt-2">
+              {{ submitError }}
             </p>
           </div>
 
@@ -294,7 +336,7 @@ const handleSubmit = () => {
               <textarea
                 v-model="form.notes"
                 rows="3"
-                placeholder="Podes deixar alguma informação adicional, se quiseres."
+                placeholder="Podes deixar alguma informação adicional."
                 class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
               />
             </div>
@@ -306,7 +348,10 @@ const handleSubmit = () => {
                   type="checkbox"
                   class="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600"
                 >
-                <span>Quero receber avisos sobre eventos, assembleias e iniciativas do CCD.</span>
+
+                <span>
+                  Quero receber avisos sobre eventos, assembleias e iniciativas do CCD.
+                </span>
               </label>
 
               <label class="mt-3 flex gap-3 text-sm text-gray-700">
@@ -315,7 +360,10 @@ const handleSubmit = () => {
                   type="checkbox"
                   class="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600"
                 >
-                <span>Autorizo o tratamento dos meus dados para efeitos de inscrição como sócio.</span>
+
+                <span>
+                  Autorizo o tratamento dos meus dados para efeitos de inscrição como sócio.
+                </span>
               </label>
 
               <p
@@ -328,9 +376,10 @@ const handleSubmit = () => {
 
             <button
               type="submit"
-              class="w-full rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400"
+              class="w-full rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSubmitting"
             >
-              Enviar pedido de inscrição
+              {{ isSubmitting ? 'A enviar pedido...' : 'Enviar pedido de inscrição' }}
             </button>
           </form>
         </div>
