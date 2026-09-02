@@ -4,27 +4,38 @@ const route = useRoute()
 const links = [
   {
     label: 'Dashboard',
-    to: '/admin'
+    to: '/admin',
+    icon: '📊'
   },
   {
     label: 'Sócios',
-    to: '/admin/socios'
+    to: '/admin/socios',
+    icon: '👥'
   },
   {
     label: 'Eventos',
-    to: '/admin/eventos'
+    to: '/admin/eventos',
+    icon: '📅'
   },
   {
     label: 'Quotas',
-    to: '/admin/quotas'
+    to: '/admin/quotas',
+    icon: '💶'
   },
   {
     label: 'Mural',
-    to: '/admin/mural'
+    to: '/admin/mural',
+    icon: '🖼️'
+  },
+  {
+    label: 'Mensagens',
+    to: '/admin/mensagens',
+    icon: '✉️'
   },
   {
     label: 'Sistema',
-    to: '/admin/sistema'
+    to: '/admin/sistema',
+    icon: '⚙️'
   }
 ]
 
