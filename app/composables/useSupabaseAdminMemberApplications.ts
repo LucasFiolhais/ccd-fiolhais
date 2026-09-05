@@ -28,6 +28,10 @@ interface SupabaseMemberApplicationRow {
   created_at: string
 }
 
+interface SupabaseMemberNumberRow {
+  number: string
+}
+
 const mapMemberApplication = (
   application: SupabaseMemberApplicationRow
 ): MemberApplication => {
@@ -44,6 +48,28 @@ const mapMemberApplication = (
     status: application.status,
     createdAt: application.created_at
   }
+}
+
+const getTodayDate = () => {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const getCurrentYear = () => {
+  return new Date().getFullYear()
+}
+
+const getNextMemberNumber = (members: SupabaseMemberNumberRow[]) => {
+  const numericNumbers = members
+    .map((member) => Number(member.number))
+    .filter((number) => Number.isFinite(number))
+
+  if (!numericNumbers.length) {
+    return '001'
+  }
+
+  const nextNumber = Math.max(...numericNumbers) + 1
+
+  return String(nextNumber).padStart(3, '0')
 }
 
 export const useSupabaseAdminMemberApplications = () => {
@@ -127,8 +153,97 @@ export const useSupabaseAdminMemberApplications = () => {
     }
   }
 
+  const createMemberFromApplication = async (application: MemberApplication) => {
+    const supabase = useSupabaseClient()
+
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase ainda não está configurado.',
+        memberNumber: null
+      }
+    }
+
+    const { data: existingMembers, error: membersError } = await supabase
+      .from('members')
+      .select('number')
+
+    if (membersError) {
+      return {
+        success: false,
+        error: membersError.message,
+        memberNumber: null
+      }
+    }
+
+    const memberNumber = getNextMemberNumber(
+      (existingMembers || []) as SupabaseMemberNumberRow[]
+    )
+
+    const { data: createdMember, error: createMemberError } = await supabase
+      .from('members')
+      .insert({
+        number: memberNumber,
+        full_name: application.fullName,
+        email: application.email,
+        phone: application.phone,
+        address: application.address,
+        birth_date: application.birthDate || null,
+        joined_at: getTodayDate(),
+        status: 'active',
+        notes: application.notes || null
+      })
+      .select('id, number')
+      .single()
+
+    if (createMemberError) {
+      return {
+        success: false,
+        error: createMemberError.message,
+        memberNumber: null
+      }
+    }
+
+    const { error: quotaError } = await supabase
+      .from('member_quotas')
+      .insert({
+        member_id: createdMember.id,
+        year: getCurrentYear(),
+        amount: 12,
+        status: 'pending'
+      })
+
+    if (quotaError) {
+      return {
+        success: false,
+        error: quotaError.message,
+        memberNumber: null
+      }
+    }
+
+    const statusResult = await updateMemberApplicationStatus(
+      application.id,
+      'approved'
+    )
+
+    if (!statusResult.success) {
+      return {
+        success: false,
+        error: statusResult.error,
+        memberNumber: null
+      }
+    }
+
+    return {
+      success: true,
+      error: null,
+      memberNumber: createdMember.number as string
+    }
+  }
+
   return {
     getMemberApplications,
-    updateMemberApplicationStatus
+    updateMemberApplicationStatus,
+    createMemberFromApplication
   }
 }
