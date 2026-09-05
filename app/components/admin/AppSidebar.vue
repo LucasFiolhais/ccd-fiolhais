@@ -13,6 +13,11 @@ const links = [
     icon: '👥'
   },
   {
+    label: 'Pedidos',
+    to: '/admin/pedidos-socio',
+    icon: '📝'
+  },
+  {
     label: 'Eventos',
     to: '/admin/eventos',
     icon: '📅'
