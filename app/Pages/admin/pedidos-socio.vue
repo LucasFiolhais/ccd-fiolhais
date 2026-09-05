@@ -17,7 +17,8 @@ type StatusFilter = 'all' | MemberApplicationStatus
 
 const {
   getMemberApplications,
-  updateMemberApplicationStatus
+  updateMemberApplicationStatus,
+  createMemberFromApplication
 } = useSupabaseAdminMemberApplications()
 
 const applications = ref<MemberApplication[]>([])
@@ -175,6 +176,21 @@ const handleApprove = async (applicationId: string) => {
 
   updateLocalApplicationStatus(applicationId, 'approved')
   successMessage.value = 'Pedido de sócio aprovado com sucesso.'
+}
+
+const handleCreateMember = async (application: MemberApplication) => {
+  submitError.value = ''
+  successMessage.value = ''
+
+  const result = await createMemberFromApplication(application)
+
+  if (!result.success) {
+    submitError.value = result.error || 'Não foi possível criar o sócio.'
+    return
+  }
+
+  updateLocalApplicationStatus(application.id, 'approved')
+  successMessage.value = `Sócio criado com sucesso com o número ${result.memberNumber}.`
 }
 
 const handleReject = async (applicationId: string) => {
@@ -356,6 +372,16 @@ onMounted(async () => {
             </div>
 
             <div class="flex flex-wrap gap-2">
+
+              <button
+  v-if="application.status !== 'approved'"
+  type="button"
+  class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+  @click="handleCreateMember(application)"
+>
+  Criar sócio
+</button>
+
               <button
                 v-if="application.status !== 'approved'"
                 type="button"
