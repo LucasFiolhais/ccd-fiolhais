@@ -1,49 +1,67 @@
 <script setup lang="ts">
-import { useEvents } from '~/composables/useEvents'
-import type { EventStatus } from '~/types/event'
+import {
+  useSupabaseAdminEvents,
+  type AdminEventStatus
+} from '~/composables/useSupabaseAdminEvents'
 
 definePageMeta({
   layout: 'admin'
 })
 
-const router = useRouter()
-const { createEvent } = useEvents()
+useHead({
+  title: 'Novo Evento'
+})
+
+const { createEvent } = useSupabaseAdminEvents()
 
 const form = reactive({
   title: '',
   description: '',
   longDescription: '',
-  date: '',
-  time: '',
+  dateLabel: 'Data a anunciar',
+  eventDate: '',
+  timeLabel: '',
+  eventTime: '',
   location: 'Fiolhais',
   priceMember: '',
   priceNonMember: '',
   capacity: 50,
-  status: 'soon' as EventStatus,
+  status: 'draft' as AdminEventStatus,
+  category: '',
   imageEmoji: '🎉',
-  category: ''
+  isPublished: false
 })
 
 const errors = reactive({
   title: '',
   description: '',
   longDescription: '',
-  date: '',
-  time: '',
+  dateLabel: '',
   location: '',
   priceMember: '',
   priceNonMember: '',
   capacity: '',
-  category: ''
+  category: '',
+  imageEmoji: ''
 })
 
-const statusOptions = [
+const isSubmitting = ref(false)
+const submitError = ref('')
+
+const statusOptions: Array<{
+  label: string
+  value: AdminEventStatus
+}> = [
+  {
+    label: 'Rascunho',
+    value: 'draft'
+  },
   {
     label: 'Aberto',
     value: 'open'
   },
   {
-    label: 'Em breve',
+    label: 'Brevemente',
     value: 'soon'
   },
   {
@@ -56,37 +74,18 @@ const statusOptions = [
   }
 ]
 
-const categoryOptions = [
-  'Convívio',
-  'Tradição',
-  'Cultura',
-  'Desporto',
-  'Assembleia',
-  'Outro'
-]
-
-const emojiOptions = [
-  '🎉',
-  '🍽️',
-  '🌰',
-  '🎤',
-  '⚽',
-  '🏡',
-  '📣',
-  '🎭'
-]
-
 const clearErrors = () => {
   errors.title = ''
   errors.description = ''
   errors.longDescription = ''
-  errors.date = ''
-  errors.time = ''
+  errors.dateLabel = ''
   errors.location = ''
   errors.priceMember = ''
   errors.priceNonMember = ''
   errors.capacity = ''
   errors.category = ''
+  errors.imageEmoji = ''
+  submitError.value = ''
 }
 
 const validateForm = () => {
@@ -104,12 +103,8 @@ const validateForm = () => {
     errors.longDescription = 'A descrição completa é obrigatória.'
   }
 
-  if (!form.date.trim()) {
-    errors.date = 'A data é obrigatória.'
-  }
-
-  if (!form.time.trim()) {
-    errors.time = 'A hora é obrigatória.'
+  if (!form.dateLabel.trim()) {
+    errors.dateLabel = 'A data visível é obrigatória.'
   }
 
   if (!form.location.trim()) {
@@ -117,32 +112,36 @@ const validateForm = () => {
   }
 
   if (!form.priceMember.trim()) {
-    errors.priceMember = 'O preço para sócio é obrigatório.'
+    errors.priceMember = 'O preço para sócios é obrigatório.'
   }
 
   if (!form.priceNonMember.trim()) {
-    errors.priceNonMember = 'O preço para não sócio é obrigatório.'
+    errors.priceNonMember = 'O preço para não sócios é obrigatório.'
   }
 
   if (!form.capacity || form.capacity < 1) {
-    errors.capacity = 'A capacidade tem de ser superior a 0.'
+    errors.capacity = 'A lotação deve ser superior a zero.'
   }
 
   if (!form.category.trim()) {
     errors.category = 'A categoria é obrigatória.'
   }
 
+  if (!form.imageEmoji.trim()) {
+    errors.imageEmoji = 'O emoji é obrigatório.'
+  }
+
   return (
     !errors.title &&
     !errors.description &&
     !errors.longDescription &&
-    !errors.date &&
-    !errors.time &&
+    !errors.dateLabel &&
     !errors.location &&
     !errors.priceMember &&
     !errors.priceNonMember &&
     !errors.capacity &&
-    !errors.category
+    !errors.category &&
+    !errors.imageEmoji
   )
 }
 
@@ -151,265 +150,399 @@ const handleSubmit = async () => {
     return
   }
 
-  const newEvent = createEvent({
-    title: form.title,
-    description: form.description,
-    longDescription: form.longDescription,
-    date: form.date,
-    time: form.time,
-    location: form.location,
-    priceMember: form.priceMember,
-    priceNonMember: form.priceNonMember,
+  isSubmitting.value = true
+
+  const result = await createEvent({
+    title: form.title.trim(),
+    description: form.description.trim(),
+    longDescription: form.longDescription.trim(),
+    dateLabel: form.dateLabel.trim(),
+    eventDate: form.eventDate || undefined,
+    timeLabel: form.timeLabel.trim() || undefined,
+    eventTime: form.eventTime || undefined,
+    location: form.location.trim(),
+    priceMember: form.priceMember.trim(),
+    priceNonMember: form.priceNonMember.trim(),
     capacity: form.capacity,
     status: form.status,
-    imageEmoji: form.imageEmoji,
-    category: form.category
+    category: form.category.trim(),
+    imageEmoji: form.imageEmoji.trim(),
+    isPublished: form.isPublished
   })
 
-  await router.push(`/admin/eventos/${newEvent.slug}`)
+  isSubmitting.value = false
+
+  if (!result.success) {
+    submitError.value = result.error || 'Não foi possível criar o evento.'
+    return
+  }
+
+  await navigateTo(`/admin/eventos/${result.slug}`)
 }
 </script>
 
 <template>
-  <UContainer class="py-10">
-    <UButton
-      to="/admin/eventos"
-      variant="link"
-      class="mb-6 px-0"
-    >
-      ← Voltar aos eventos
-    </UButton>
+  <UContainer class="py-8">
+    <div class="mb-8">
+      <NuxtLink
+        to="/admin/eventos"
+        class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
+      >
+        ← Voltar aos eventos
+      </NuxtLink>
+    </div>
 
     <div class="mb-8">
-      <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-        Novo evento
+      <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
+        Administração
       </p>
 
       <h1 class="mt-2 text-3xl font-bold text-gray-950">
-        Criar evento
+        Criar novo evento
       </h1>
 
       <p class="mt-2 text-gray-600">
-        Preenche os dados principais do evento. Mais tarde este formulário será ligado ao Supabase.
+        Cria um evento real na base de dados Supabase.
+      </p>
+    </div>
+
+    <div
+      v-if="submitError"
+      class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+    >
+      <p class="font-bold">
+        Erro
+      </p>
+
+      <p class="mt-2">
+        {{ submitError }}
       </p>
     </div>
 
     <form
-      class="grid gap-8 lg:grid-cols-[1fr_360px]"
+      class="rounded-3xl border border-amber-200 bg-white shadow-sm"
       @submit.prevent="handleSubmit"
     >
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Informação principal
-            </h2>
-          </template>
+      <div class="border-b border-gray-200 p-6">
+        <h2 class="text-2xl font-bold text-gray-950">
+          Dados do evento
+        </h2>
 
-          <div class="space-y-5">
-            <UFormField
-              label="Título do evento"
-              :error="errors.title"
-            >
-              <UInput
-                v-model="form.title"
-                placeholder="Ex: Almoço de Natal"
-                size="lg"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Descrição curta"
-              :error="errors.description"
-            >
-              <UTextarea
-                v-model="form.description"
-                placeholder="Pequeno resumo que aparece nos cartões do evento."
-                size="lg"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Descrição completa"
-              :error="errors.longDescription"
-            >
-              <UTextarea
-                v-model="form.longDescription"
-                placeholder="Texto completo da página individual do evento."
-                size="lg"
-                :rows="6"
-              />
-            </UFormField>
-
-            <div class="grid gap-5 md:grid-cols-2">
-              <UFormField
-                label="Data"
-                :error="errors.date"
-              >
-                <UInput
-                  v-model="form.date"
-                  placeholder="Ex: 15 de Agosto ou Data a anunciar"
-                  size="lg"
-                />
-              </UFormField>
-
-              <UFormField
-                label="Hora"
-                :error="errors.time"
-              >
-                <UInput
-                  v-model="form.time"
-                  type="time"
-                  size="lg"
-                />
-              </UFormField>
-            </div>
-
-            <UFormField
-              label="Local"
-              :error="errors.location"
-            >
-              <UInput
-                v-model="form.location"
-                placeholder="Ex: Sede do CCD"
-                size="lg"
-              />
-            </UFormField>
-          </div>
-        </UCard>
-
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Bilheteira e inscrições
-            </h2>
-          </template>
-
-          <div class="grid gap-5 md:grid-cols-3">
-            <UFormField
-              label="Preço sócio"
-              :error="errors.priceMember"
-            >
-              <UInput
-                v-model="form.priceMember"
-                placeholder="Ex: 12€"
-                size="lg"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Preço não sócio"
-              :error="errors.priceNonMember"
-            >
-              <UInput
-                v-model="form.priceNonMember"
-                placeholder="Ex: 15€"
-                size="lg"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Capacidade"
-              :error="errors.capacity"
-            >
-              <UInput
-                v-model.number="form.capacity"
-                type="number"
-                min="1"
-                size="lg"
-              />
-            </UFormField>
-          </div>
-        </UCard>
+        <p class="mt-2 text-gray-600">
+          O evento só aparece no site público se estiver marcado como publicado.
+        </p>
       </div>
 
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Estado e categoria
-            </h2>
-          </template>
+      <div class="space-y-6 p-6">
+        <div class="grid gap-5 md:grid-cols-[120px_1fr]">
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Emoji
+            </label>
 
-          <div class="space-y-5">
-            <UFormField label="Estado">
-              <USelect
-                v-model="form.status"
-                :items="statusOptions"
-                size="lg"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Categoria"
-              :error="errors.category"
+            <input
+              v-model="form.imageEmoji"
+              type="text"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-center text-2xl text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.imageEmoji ? 'border-red-400' : 'border-gray-300'"
             >
-              <USelect
-                v-model="form.category"
-                :items="categoryOptions"
-                placeholder="Escolher categoria"
-                size="lg"
-              />
-            </UFormField>
 
-            <UFormField label="Ícone do evento">
-              <div class="grid grid-cols-4 gap-2">
-                <button
-                  v-for="emoji in emojiOptions"
-                  :key="emoji"
-                  type="button"
-                  class="rounded-xl border p-3 text-2xl transition hover:bg-gray-50"
-                  :class="form.imageEmoji === emoji
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-200'"
-                  @click="form.imageEmoji = emoji"
-                >
-                  {{ emoji }}
-                </button>
-              </div>
-            </UFormField>
-          </div>
-        </UCard>
-
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Pré-visualização
-            </h2>
-          </template>
-
-          <div class="rounded-2xl border border-gray-200 p-5">
-            <div class="flex h-24 items-center justify-center rounded-xl bg-gray-100 text-5xl">
-              {{ form.imageEmoji }}
-            </div>
-
-            <p class="mt-4 text-sm font-medium text-primary">
-              {{ form.category || 'Categoria' }}
-            </p>
-
-            <h3 class="mt-1 text-lg font-bold text-gray-950">
-              {{ form.title || 'Título do evento' }}
-            </h3>
-
-            <p class="mt-2 text-sm text-gray-600">
-              {{ form.description || 'Descrição curta do evento.' }}
-            </p>
-
-            <p class="mt-4 text-sm text-gray-500">
-              {{ form.date || 'Data' }} · {{ form.time || 'Hora' }}
+            <p
+              v-if="errors.imageEmoji"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.imageEmoji }}
             </p>
           </div>
 
-          <template #footer>
-            <UButton
-              type="submit"
-              size="lg"
-              block
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Título
+            </label>
+
+            <input
+              v-model="form.title"
+              type="text"
+              placeholder="Ex: Almoço Comunitário"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.title ? 'border-red-400' : 'border-gray-300'"
             >
-              Criar evento
-            </UButton>
-          </template>
-        </UCard>
+
+            <p
+              v-if="errors.title"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.title }}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-2">
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Categoria
+            </label>
+
+            <input
+              v-model="form.category"
+              type="text"
+              placeholder="Ex: Convívio"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.category ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.category"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.category }}
+            </p>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Local
+            </label>
+
+            <input
+              v-model="form.location"
+              type="text"
+              placeholder="Ex: Sede do CCD"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.location ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.location"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.location }}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold text-gray-800">
+            Descrição curta
+          </label>
+
+          <textarea
+            v-model="form.description"
+            rows="3"
+            placeholder="Resumo que aparece na listagem pública."
+            class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            :class="errors.description ? 'border-red-400' : 'border-gray-300'"
+          />
+
+          <p
+            v-if="errors.description"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.description }}
+          </p>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold text-gray-800">
+            Descrição completa
+          </label>
+
+          <textarea
+            v-model="form.longDescription"
+            rows="6"
+            placeholder="Texto completo da página individual do evento."
+            class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            :class="errors.longDescription ? 'border-red-400' : 'border-gray-300'"
+          />
+
+          <p
+            v-if="errors.longDescription"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.longDescription }}
+          </p>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Data visível
+            </label>
+
+            <input
+              v-model="form.dateLabel"
+              type="text"
+              placeholder="Ex: Data a anunciar"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.dateLabel ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.dateLabel"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.dateLabel }}
+            </p>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Data real
+            </label>
+
+            <input
+              v-model="form.eventDate"
+              type="date"
+              class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Hora visível
+            </label>
+
+            <input
+              v-model="form.timeLabel"
+              type="text"
+              placeholder="Ex: 12:30"
+              class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Hora real
+            </label>
+
+            <input
+              v-model="form.eventTime"
+              type="time"
+              class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
+          </div>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-3">
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Preço sócio
+            </label>
+
+            <input
+              v-model="form.priceMember"
+              type="text"
+              placeholder="Ex: 12€"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.priceMember ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.priceMember"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.priceMember }}
+            </p>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Preço não sócio
+            </label>
+
+            <input
+              v-model="form.priceNonMember"
+              type="text"
+              placeholder="Ex: 15€"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.priceNonMember ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.priceNonMember"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.priceNonMember }}
+            </p>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Lotação
+            </label>
+
+            <input
+              v-model.number="form.capacity"
+              type="number"
+              min="1"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.capacity ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.capacity"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.capacity }}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-2">
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Estado
+            </label>
+
+            <select
+              v-model="form.status"
+              class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
+              <option
+                v-for="status in statusOptions"
+                :key="status.value"
+                :value="status.value"
+              >
+                {{ status.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <label class="flex gap-3 text-sm text-gray-700">
+              <input
+                v-model="form.isPublished"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-gray-300 text-amber-600"
+              >
+
+              <span>
+                Publicar no site público
+              </span>
+            </label>
+
+            <p class="mt-2 text-sm text-gray-500">
+              Se não estiver marcado, o evento fica guardado apenas no backoffice.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 border-t border-gray-200 p-6 sm:flex-row sm:justify-end">
+        <NuxtLink
+          to="/admin/eventos"
+          class="rounded-xl border border-gray-300 px-5 py-3 text-center text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+        >
+          Cancelar
+        </NuxtLink>
+
+        <button
+          type="submit"
+          class="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="isSubmitting"
+        >
+          {{ isSubmitting ? 'A criar...' : 'Criar evento' }}
+        </button>
       </div>
     </form>
   </UContainer>
