@@ -659,6 +659,13 @@ onMounted(async () => {
   Ver detalhes
 </NuxtLink>
 
+<NuxtLink
+  :to="`/admin/socios/${member.number}/editar`"
+  class="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+>
+  Editar
+</NuxtLink>
+
                   <button
                     v-if="member.status !== 'active'"
                     type="button"

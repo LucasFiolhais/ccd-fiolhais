@@ -318,6 +318,13 @@ onMounted(async () => {
             Recarregar
           </button>
 
+          <NuxtLink
+  :to="`/admin/socios/${member.number}/editar`"
+  class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+>
+  Editar dados
+</NuxtLink>
+
           <button
             v-if="member.status !== 'active'"
             type="button"
