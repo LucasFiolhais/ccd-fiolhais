@@ -70,7 +70,9 @@ const mapMember = (
 ): AdminMember => {
   const quotas = (member.member_quotas || [])
     .map((quota) => mapQuota(quota))
-    .sort((firstQuota, secondQuota) => secondQuota.year - firstQuota.year)
+    .sort((firstQuota, secondQuota) => {
+      return secondQuota.year - firstQuota.year
+    })
 
   return {
     id: member.id,
@@ -141,6 +143,66 @@ export const useSupabaseAdminMembers = () => {
       members: (data || []).map((member) => {
         return mapMember(member as SupabaseMemberRow, currentYear)
       })
+    }
+  }
+
+  const getMemberByNumber = async (memberNumber: string) => {
+    const supabase = useSupabaseClient()
+
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase ainda não está configurado.',
+        member: null
+      }
+    }
+
+    const currentYear = getCurrentYear()
+
+    const { data, error } = await supabase
+      .from('members')
+      .select(`
+        id,
+        number,
+        full_name,
+        email,
+        phone,
+        address,
+        birth_date,
+        joined_at,
+        status,
+        notes,
+        member_quotas (
+          id,
+          year,
+          amount,
+          status,
+          paid_at
+        )
+      `)
+      .eq('number', memberNumber)
+      .maybeSingle()
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+        member: null
+      }
+    }
+
+    if (!data) {
+      return {
+        success: true,
+        error: null,
+        member: null
+      }
+    }
+
+    return {
+      success: true,
+      error: null,
+      member: mapMember(data as SupabaseMemberRow, currentYear)
     }
   }
 
@@ -245,6 +307,7 @@ export const useSupabaseAdminMembers = () => {
 
   return {
     getMembers,
+    getMemberByNumber,
     updateMemberStatus,
     updateQuotaStatus,
     createCurrentYearQuota
