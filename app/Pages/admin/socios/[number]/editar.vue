@@ -1,18 +1,29 @@
 <script setup lang="ts">
-import { useMembers } from '~/composables/useMembers'
-import type { MemberStatus } from '~/types/member'
+import {
+  useSupabaseAdminMembers,
+  type AdminMember,
+  type AdminMemberStatus
+} from '~/composables/useSupabaseAdminMembers'
 
 definePageMeta({
   layout: 'admin'
 })
 
 const route = useRoute()
-const router = useRouter()
 
-const { getMemberByNumber, updateMember } = useMembers()
+const {
+  getMemberByNumber,
+  updateMember
+} = useSupabaseAdminMembers()
 
-const member = computed(() => {
-  return getMemberByNumber(String(route.params.number))
+const member = ref<AdminMember | null>(null)
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+const submitError = ref('')
+const successMessage = ref('')
+
+const memberNumber = computed(() => {
+  return String(route.params.number)
 })
 
 const form = reactive({
@@ -21,7 +32,8 @@ const form = reactive({
   phone: '',
   address: '',
   birthDate: '',
-  status: 'pending' as MemberStatus,
+  joinedAt: '',
+  status: 'active' as AdminMemberStatus,
   notes: ''
 })
 
@@ -29,10 +41,14 @@ const errors = reactive({
   fullName: '',
   email: '',
   phone: '',
-  address: ''
+  address: '',
+  joinedAt: ''
 })
 
-const statusOptions = [
+const statusOptions: Array<{
+  label: string
+  value: AdminMemberStatus
+}> = [
   {
     label: 'Ativo',
     value: 'active'
@@ -47,18 +63,10 @@ const statusOptions = [
   }
 ]
 
-watchEffect(() => {
-  if (!member.value) {
-    return
+useHead(() => {
+  return {
+    title: member.value ? `Editar sócio ${member.value.number}` : 'Editar sócio'
   }
-
-  form.fullName = member.value.fullName
-  form.email = member.value.email
-  form.phone = member.value.phone
-  form.address = member.value.address
-  form.birthDate = member.value.birthDate || ''
-  form.status = member.value.status
-  form.notes = member.value.notes || ''
 })
 
 const clearErrors = () => {
@@ -66,6 +74,9 @@ const clearErrors = () => {
   errors.email = ''
   errors.phone = ''
   errors.address = ''
+  errors.joinedAt = ''
+  submitError.value = ''
+  successMessage.value = ''
 }
 
 const validateForm = () => {
@@ -89,12 +100,49 @@ const validateForm = () => {
     errors.address = 'A morada é obrigatória.'
   }
 
+  if (!form.joinedAt) {
+    errors.joinedAt = 'A data de inscrição é obrigatória.'
+  }
+
   return (
     !errors.fullName &&
     !errors.email &&
     !errors.phone &&
-    !errors.address
+    !errors.address &&
+    !errors.joinedAt
   )
+}
+
+const fillForm = (selectedMember: AdminMember) => {
+  form.fullName = selectedMember.fullName
+  form.email = selectedMember.email
+  form.phone = selectedMember.phone
+  form.address = selectedMember.address
+  form.birthDate = selectedMember.birthDate || ''
+  form.joinedAt = selectedMember.joinedAt
+  form.status = selectedMember.status
+  form.notes = selectedMember.notes || ''
+}
+
+const loadMember = async () => {
+  isLoading.value = true
+  submitError.value = ''
+  successMessage.value = ''
+
+  const result = await getMemberByNumber(memberNumber.value)
+
+  isLoading.value = false
+
+  if (!result.success) {
+    submitError.value = result.error || 'Não foi possível carregar o sócio.'
+    return
+  }
+
+  member.value = result.member
+
+  if (result.member) {
+    fillForm(result.member)
+  }
 }
 
 const handleSubmit = async () => {
@@ -106,218 +154,334 @@ const handleSubmit = async () => {
     return
   }
 
-  const updatedMember = updateMember(member.value.number, {
-    fullName: form.fullName,
-    email: form.email,
-    phone: form.phone,
-    address: form.address,
-    birthDate: form.birthDate,
+  isSubmitting.value = true
+
+  const result = await updateMember(member.value.id, {
+    fullName: form.fullName.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    address: form.address.trim(),
+    birthDate: form.birthDate || undefined,
+    joinedAt: form.joinedAt,
     status: form.status,
-    notes: form.notes
+    notes: form.notes.trim() || undefined
   })
 
-  if (!updatedMember) {
+  isSubmitting.value = false
+
+  if (!result.success) {
+    submitError.value = result.error || 'Não foi possível guardar as alterações.'
     return
   }
 
-  await router.push(`/admin/socios/${updatedMember.number}`)
+  successMessage.value = 'Dados do sócio atualizados com sucesso.'
+  await loadMember()
 }
+
+const handleCancel = async () => {
+  await navigateTo(`/admin/socios/${memberNumber.value}`)
+}
+
+onMounted(async () => {
+  await loadMember()
+})
 </script>
 
 <template>
-  <UContainer class="py-10">
-    <UButton
-      :to="member ? `/admin/socios/${member.number}` : '/admin/socios'"
-      variant="link"
-      class="mb-6 px-0"
-    >
-      ← Voltar à ficha
-    </UButton>
+  <UContainer class="py-8">
+    <div class="mb-8">
+      <NuxtLink
+        :to="`/admin/socios/${memberNumber}`"
+        class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
+      >
+        ← Voltar ao sócio
+      </NuxtLink>
+    </div>
 
     <div
-      v-if="member"
-      class="mb-8"
+      v-if="isLoading"
+      class="rounded-3xl border border-amber-200 bg-white p-8 text-center text-gray-600 shadow-sm"
     >
-      <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-        Editar sócio nº {{ member.number }}
+      A carregar dados do sócio...
+    </div>
+
+    <div
+      v-else-if="submitError && !member"
+      class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+    >
+      <p class="font-bold">
+        Erro
       </p>
 
-      <h1 class="mt-2 text-3xl font-bold text-gray-950">
-        Editar dados do sócio
-      </h1>
-
-      <p class="mt-2 text-gray-600">
-        Atualiza os dados pessoais, estado e notas internas do sócio.
+      <p class="mt-2">
+        {{ submitError }}
       </p>
     </div>
 
-    <form
-      v-if="member"
-      class="grid gap-8 lg:grid-cols-[1fr_360px]"
-      @submit.prevent="handleSubmit"
+    <div
+      v-else-if="member"
+      class="space-y-8"
     >
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Dados pessoais
-            </h2>
-          </template>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
+            Sócio nº {{ member.number }}
+          </p>
 
-          <div class="space-y-5">
-            <UFormField
-              label="Nome completo"
-              :error="errors.fullName"
-            >
-              <UInput
-                v-model="form.fullName"
-                size="lg"
-              />
-            </UFormField>
+          <h1 class="mt-2 text-3xl font-bold text-gray-950">
+            Editar dados do sócio
+          </h1>
 
-            <div class="grid gap-5 md:grid-cols-2">
-              <UFormField
-                label="Email"
-                :error="errors.email"
+          <p class="mt-2 text-gray-600">
+            Atualiza os dados pessoais, contactos e estado do sócio na base de dados Supabase.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+          @click="handleCancel"
+        >
+          Cancelar
+        </button>
+      </div>
+
+      <div
+        v-if="submitError"
+        class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+      >
+        <p class="font-bold">
+          Erro
+        </p>
+
+        <p class="mt-2">
+          {{ submitError }}
+        </p>
+      </div>
+
+      <div
+        v-if="successMessage"
+        class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
+      >
+        <p class="font-bold">
+          Alterações guardadas
+        </p>
+
+        <p class="mt-2">
+          {{ successMessage }}
+        </p>
+      </div>
+
+      <form
+        class="rounded-3xl border border-amber-200 bg-white shadow-sm"
+        @submit.prevent="handleSubmit"
+      >
+        <div class="border-b border-gray-200 p-6">
+          <h2 class="text-2xl font-bold text-gray-950">
+            Dados principais
+          </h2>
+
+          <p class="mt-2 text-gray-600">
+            O número de sócio não é editado nesta fase para evitar conflitos com outros sócios.
+          </p>
+        </div>
+
+        <div class="space-y-6 p-6">
+          <div class="grid gap-5 md:grid-cols-2">
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Número de sócio
+              </label>
+
+              <input
+                :value="member.number"
+                type="text"
+                disabled
+                class="mt-2 w-full cursor-not-allowed rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-gray-500 outline-none"
               >
-                <UInput
-                  v-model="form.email"
-                  type="email"
-                  size="lg"
-                />
-              </UFormField>
-
-              <UFormField
-                label="Telefone"
-                :error="errors.phone"
-              >
-                <UInput
-                  v-model="form.phone"
-                  size="lg"
-                />
-              </UFormField>
             </div>
 
-            <UFormField
-              label="Morada"
-              :error="errors.address"
-            >
-              <UTextarea
-                v-model="form.address"
-                size="lg"
-              />
-            </UFormField>
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Estado
+              </label>
 
-            <UFormField label="Data de nascimento">
-              <UInput
+              <select
+                v-model="form.status"
+                class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              >
+                <option
+                  v-for="status in statusOptions"
+                  :key="status.value"
+                  :value="status.value"
+                >
+                  {{ status.label }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Nome completo
+            </label>
+
+            <input
+              v-model="form.fullName"
+              type="text"
+              placeholder="Nome completo"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.fullName ? 'border-red-400' : 'border-gray-300'"
+            >
+
+            <p
+              v-if="errors.fullName"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.fullName }}
+            </p>
+          </div>
+
+          <div class="grid gap-5 md:grid-cols-2">
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Email
+              </label>
+
+              <input
+                v-model="form.email"
+                type="email"
+                placeholder="email@exemplo.com"
+                class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                :class="errors.email ? 'border-red-400' : 'border-gray-300'"
+              >
+
+              <p
+                v-if="errors.email"
+                class="mt-1 text-sm text-red-600"
+              >
+                {{ errors.email }}
+              </p>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Telefone
+              </label>
+
+              <input
+                v-model="form.phone"
+                type="tel"
+                placeholder="912 345 678"
+                class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                :class="errors.phone ? 'border-red-400' : 'border-gray-300'"
+              >
+
+              <p
+                v-if="errors.phone"
+                class="mt-1 text-sm text-red-600"
+              >
+                {{ errors.phone }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Morada
+            </label>
+
+            <textarea
+              v-model="form.address"
+              rows="3"
+              placeholder="Morada completa"
+              class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              :class="errors.address ? 'border-red-400' : 'border-gray-300'"
+            />
+
+            <p
+              v-if="errors.address"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ errors.address }}
+            </p>
+          </div>
+
+          <div class="grid gap-5 md:grid-cols-2">
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Data de nascimento
+              </label>
+
+              <input
                 v-model="form.birthDate"
                 type="date"
-                size="lg"
-              />
-            </UFormField>
+                class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              >
+            </div>
 
-            <UFormField label="Notas internas">
-              <UTextarea
-                v-model="form.notes"
-                size="lg"
-                :rows="5"
-              />
-            </UFormField>
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Data de inscrição
+              </label>
+
+              <input
+                v-model="form.joinedAt"
+                type="date"
+                class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                :class="errors.joinedAt ? 'border-red-400' : 'border-gray-300'"
+              >
+
+              <p
+                v-if="errors.joinedAt"
+                class="mt-1 text-sm text-red-600"
+              >
+                {{ errors.joinedAt }}
+              </p>
+            </div>
           </div>
-        </UCard>
-      </div>
 
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Estado do sócio
-            </h2>
-          </template>
+          <div>
+            <label class="text-sm font-semibold text-gray-800">
+              Observações
+            </label>
 
-          <UFormField label="Estado">
-            <USelect
-              v-model="form.status"
-              :items="statusOptions"
-              size="lg"
+            <textarea
+              v-model="form.notes"
+              rows="4"
+              placeholder="Notas internas sobre o sócio"
+              class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
             />
-          </UFormField>
-
-          <div class="mt-5 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-            <p>
-              O estado permite distinguir sócios ativos, pedidos pendentes e sócios inativos.
-            </p>
-
-            <p class="mt-2">
-              Esta informação é usada na lista de sócios, dashboard e filtros do backoffice.
-            </p>
           </div>
-        </UCard>
+        </div>
 
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Pré-visualização
-            </h2>
-          </template>
+        <div class="flex flex-col gap-3 border-t border-gray-200 p-6 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            @click="handleCancel"
+          >
+            Cancelar
+          </button>
 
-          <div class="rounded-2xl border border-gray-200 p-5">
-            <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-              Sócio nº {{ member.number }}
-            </p>
+          <button
+            type="submit"
+            class="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isSubmitting"
+          >
+            {{ isSubmitting ? 'A guardar...' : 'Guardar alterações' }}
+          </button>
+        </div>
+      </form>
+    </div>
 
-            <h3 class="mt-2 text-xl font-bold text-gray-950">
-              {{ form.fullName || 'Nome do sócio' }}
-            </h3>
-
-            <div class="mt-4 space-y-2 text-sm text-gray-600">
-              <p>{{ form.email || 'email@exemplo.com' }}</p>
-              <p>{{ form.phone || 'Telefone' }}</p>
-              <p>{{ form.address || 'Morada' }}</p>
-            </div>
-          </div>
-
-          <template #footer>
-            <div class="space-y-3">
-              <UButton
-                type="submit"
-                size="lg"
-                block
-              >
-                Guardar alterações
-              </UButton>
-
-              <UButton
-                :to="`/admin/socios/${member.number}`"
-                variant="outline"
-                block
-              >
-                Cancelar
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </div>
-    </form>
-
-    <UCard
+    <SharedEmptyState
       v-else
-      class="text-center"
-    >
-      <h1 class="text-2xl font-bold text-gray-950">
-        Sócio não encontrado
-      </h1>
-
-      <p class="mt-2 text-gray-600">
-        Não foi possível encontrar o sócio indicado.
-      </p>
-
-      <UButton
-        to="/admin/socios"
-        class="mt-6"
-      >
-        Voltar aos sócios
-      </UButton>
-    </UCard>
+      icon="👥"
+      title="Sócio não encontrado"
+      description="Não existe nenhum sócio com este número na base de dados."
+      action-label="Voltar aos sócios"
+      action-to="/admin/socios"
+    />
   </UContainer>
 </template>

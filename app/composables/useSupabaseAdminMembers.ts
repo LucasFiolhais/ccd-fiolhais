@@ -24,6 +24,17 @@ export interface AdminMember {
   currentQuota?: AdminMemberQuota
 }
 
+export interface UpdateAdminMemberInput {
+  fullName: string
+  email: string
+  phone: string
+  address: string
+  birthDate?: string
+  joinedAt: string
+  status: AdminMemberStatus
+  notes?: string
+}
+
 interface SupabaseMemberQuotaRow {
   id: string
   year: number
@@ -206,6 +217,46 @@ export const useSupabaseAdminMembers = () => {
     }
   }
 
+  const updateMember = async (
+    memberId: string,
+    input: UpdateAdminMemberInput
+  ) => {
+    const supabase = useSupabaseClient()
+
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase ainda não está configurado.'
+      }
+    }
+
+    const { error } = await supabase
+      .from('members')
+      .update({
+        full_name: input.fullName,
+        email: input.email,
+        phone: input.phone,
+        address: input.address,
+        birth_date: input.birthDate || null,
+        joined_at: input.joinedAt,
+        status: input.status,
+        notes: input.notes || null
+      })
+      .eq('id', memberId)
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+
+    return {
+      success: true,
+      error: null
+    }
+  }
+
   const updateMemberStatus = async (
     memberId: string,
     status: AdminMemberStatus
@@ -308,6 +359,7 @@ export const useSupabaseAdminMembers = () => {
   return {
     getMembers,
     getMemberByNumber,
+    updateMember,
     updateMemberStatus,
     updateQuotaStatus,
     createCurrentYearQuota
