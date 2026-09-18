@@ -106,7 +106,9 @@ const displayTime = computed(() => {
     return ''
   }
 
-  return event.value.timeLabel || event.value.eventTime || 'Hora a anunciar'
+  return event.value.timeLabel ||
+    event.value.eventTime ||
+    'Hora a anunciar'
 })
 
 const availableSeats = computed(() => {
@@ -114,7 +116,10 @@ const availableSeats = computed(() => {
     return 0
   }
 
-  return event.value.capacity - event.value.registeredSeats
+  return Math.max(
+    event.value.capacity - event.value.registeredSeats,
+    0
+  )
 })
 
 const loadEvent = async () => {
@@ -127,7 +132,10 @@ const loadEvent = async () => {
   isLoading.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível carregar o evento.'
+    submitError.value =
+      result.error || 'Não foi possível carregar o evento.'
+
+    event.value = null
     return
   }
 
@@ -138,7 +146,9 @@ const handleReload = async () => {
   await loadEvent()
 }
 
-const handleUpdateStatus = async (status: AdminEventStatus) => {
+const handleUpdateStatus = async (
+  status: AdminEventStatus
+) => {
   if (!event.value) {
     return
   }
@@ -147,16 +157,24 @@ const handleUpdateStatus = async (status: AdminEventStatus) => {
   successMessage.value = ''
   isSubmitting.value = true
 
-  const result = await updateEventStatus(event.value.id, status)
+  const result = await updateEventStatus(
+    event.value.id,
+    status
+  )
 
   isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível atualizar o estado do evento.'
+    submitError.value =
+      result.error ||
+      'Não foi possível atualizar o estado do evento.'
+
     return
   }
 
-  successMessage.value = 'Estado do evento atualizado com sucesso.'
+  successMessage.value =
+    'Estado do evento atualizado com sucesso.'
+
   await loadEvent()
 }
 
@@ -169,6 +187,8 @@ const handleTogglePublication = async () => {
   successMessage.value = ''
   isSubmitting.value = true
 
+  const wasPublished = event.value.isPublished
+
   const result = await updateEventPublication(
     event.value.id,
     !event.value.isPublished
@@ -177,11 +197,14 @@ const handleTogglePublication = async () => {
   isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível atualizar a publicação do evento.'
+    submitError.value =
+      result.error ||
+      'Não foi possível atualizar a publicação do evento.'
+
     return
   }
 
-  successMessage.value = event.value.isPublished
+  successMessage.value = wasPublished
     ? 'Evento removido do site público.'
     : 'Evento publicado no site público.'
 
@@ -193,7 +216,9 @@ const handleDeleteEvent = async () => {
     return
   }
 
-  const confirmed = confirm(`Tens a certeza que queres apagar o evento "${event.value.title}"?`)
+  const confirmed = confirm(
+    `Tens a certeza que queres apagar o evento "${event.value.title}"?`
+  )
 
   if (!confirmed) {
     return
@@ -208,7 +233,9 @@ const handleDeleteEvent = async () => {
   isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível apagar o evento.'
+    submitError.value =
+      result.error || 'Não foi possível apagar o evento.'
+
     return
   }
 
@@ -359,7 +386,7 @@ onMounted(async () => {
         <AdminStatCard
           label="Lugares inscritos"
           :value="event.registeredSeats"
-          :description="`${event.capacity} lugares disponíveis`"
+          :description="`${event.capacity} lugares de lotação`"
         />
 
         <AdminStatCard
@@ -371,7 +398,7 @@ onMounted(async () => {
         <AdminStatCard
           label="Inscrições"
           :value="event.registrationsCount"
-          description="Total de inscrições"
+          description="Total de registos"
         />
 
         <AdminStatCard
@@ -486,6 +513,26 @@ onMounted(async () => {
                   {{ event.capacity }} lugares
                 </p>
               </div>
+
+              <div class="rounded-2xl bg-gray-50 p-4">
+                <p class="text-sm font-semibold text-gray-500">
+                  Lugares ocupados
+                </p>
+
+                <p class="mt-1 text-gray-950">
+                  {{ event.registeredSeats }}
+                </p>
+              </div>
+
+              <div class="rounded-2xl bg-gray-50 p-4">
+                <p class="text-sm font-semibold text-gray-500">
+                  Lugares livres
+                </p>
+
+                <p class="mt-1 text-gray-950">
+                  {{ availableSeats }}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -555,9 +602,18 @@ onMounted(async () => {
             <p class="mt-2 break-all text-sm text-gray-500">
               Slug: {{ event.slug }}
             </p>
+
+            <p class="mt-2 break-all text-sm text-gray-500">
+              ID: {{ event.id }}
+            </p>
           </div>
         </div>
       </div>
+
+      <AdminEventRegistrationsPanel
+        :event-id="event.id"
+        @updated="handleReload"
+      />
     </div>
 
     <SharedEmptyState
