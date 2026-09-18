@@ -1,33 +1,21 @@
 <script setup lang="ts">
-import { usePosts } from '~/composables/usePosts'
-import { useSupabasePosts } from '~/composables/useSupabasePosts'
+import {
+  useSupabasePublicPosts,
+  type PublicPost
+} from '~/composables/useSupabasePublicPosts'
 
 const route = useRoute()
 
-const { getPostBySlug } = usePosts()
-const { getPublishedPostBySlug } = useSupabasePosts()
-
-const slug = computed(() => {
-  return String(route.params.slug)
-})
-
 const {
-  data: supabasePost,
-  pending
-} = await useAsyncData(`public-post-${slug.value}`, () => {
-  return getPublishedPostBySlug(slug.value)
-})
+  getPublishedPostBySlug
+} = useSupabasePublicPosts()
 
-const mockPost = computed(() => {
-  return getPostBySlug(slug.value)
-})
+const post = ref<PublicPost | null>(null)
+const isLoading = ref(true)
+const loadError = ref('')
 
-const post = computed(() => {
-  return supabasePost.value || mockPost.value || null
-})
-
-const isUsingSupabase = computed(() => {
-  return Boolean(supabasePost.value)
+const postSlug = computed(() => {
+  return String(route.params.slug)
 })
 
 useHead(() => {
@@ -35,97 +23,127 @@ useHead(() => {
     title: post.value?.title || 'Publicação'
   }
 })
+
+const formatDate = (value?: string) => {
+  if (!value) {
+    return ''
+  }
+
+  const date = value.includes('T')
+    ? new Date(value)
+    : new Date(`${value}T00:00:00`)
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(date)
+}
+
+const loadPost = async () => {
+  isLoading.value = true
+  loadError.value = ''
+
+  const result = await getPublishedPostBySlug(
+    postSlug.value
+  )
+
+  isLoading.value = false
+
+  if (!result.success) {
+    loadError.value =
+      result.error ||
+      'Não foi possível carregar a publicação.'
+
+    post.value = null
+    return
+  }
+
+  post.value = result.post
+}
+
+onMounted(async () => {
+  await loadPost()
+})
 </script>
 
 <template>
-  <div>
-    <section class="bg-gray-50 py-16">
-      <UContainer>
-        <NuxtLink
-          to="/mural"
-          class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
-        >
-          ← Voltar ao mural
-        </NuxtLink>
+  <section class="bg-[#f8f4ea] py-16">
+    <UContainer>
+      <NuxtLink
+        to="/mural"
+        class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
+      >
+        ← Voltar ao mural
+      </NuxtLink>
 
-        <div
-          v-if="pending"
-          class="mt-8 rounded-2xl border border-amber-200 bg-white p-8 text-gray-700 shadow-sm"
-        >
-          A carregar publicação...
+      <div
+        v-if="isLoading"
+        class="mt-8 rounded-3xl border border-amber-200 bg-white p-10 text-center text-gray-600 shadow-sm"
+      >
+        A carregar publicação...
+      </div>
+
+      <div
+        v-else-if="loadError"
+        class="mt-8 rounded-3xl border border-red-200 bg-red-50 p-6 text-red-900"
+      >
+        <p class="font-bold">
+          Erro
+        </p>
+
+        <p class="mt-2">
+          {{ loadError }}
+        </p>
+      </div>
+
+      <article
+        v-else-if="post"
+        class="mx-auto mt-8 max-w-4xl overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-sm"
+      >
+        <div class="flex min-h-52 items-center justify-center bg-gray-50 text-8xl">
+          {{ post.coverEmoji }}
         </div>
 
-        <article
-          v-else-if="post"
-          class="mt-8"
-        >
-          <div class="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
-            <div>
-              <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
-                {{ post.category }}
-              </p>
+        <div class="p-7 sm:p-10">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+              {{ post.category }}
+            </span>
 
-              <h1 class="mt-3 text-4xl font-bold text-gray-950">
-                {{ post.title }}
-              </h1>
-
-              <p class="mt-4 text-lg leading-8 text-gray-700">
-                {{ post.excerpt }}
-              </p>
-
-              <p class="mt-4 text-sm text-gray-500">
-                Publicado em {{ post.publishedAt || post.createdAt }}
-              </p>
-
-              <div
-                v-if="isUsingSupabase"
-                class="mt-6 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
-              >
-                Publicação carregada da base de dados oficial
-              </div>
-
-              <div
-                v-else
-                class="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
-              >
-                Publicação de demonstração
-              </div>
-            </div>
-
-            <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
-              <div class="flex h-56 items-center justify-center rounded-2xl bg-gray-50 text-7xl">
-                {{ post.coverEmoji }}
-              </div>
-
-              <div class="mt-6 rounded-2xl bg-gray-50 p-4">
-                <p class="text-sm text-gray-500">
-                  Categoria
-                </p>
-
-                <p class="mt-1 font-semibold text-gray-950">
-                  {{ post.category }}
-                </p>
-              </div>
-            </div>
+            <span
+              v-if="post.publishedAt"
+              class="text-sm text-gray-500"
+            >
+              {{ formatDate(post.publishedAt) }}
+            </span>
           </div>
 
-          <div class="mt-10 rounded-3xl border border-amber-200 bg-white p-8 leading-8 text-gray-700 shadow-sm">
-            <div class="whitespace-pre-line">
-              {{ post.content }}
-            </div>
-          </div>
-        </article>
+          <h1 class="mt-5 text-3xl font-black text-gray-950 sm:text-4xl">
+            {{ post.title }}
+          </h1>
 
-        <SharedEmptyState
-          v-else
-          class="mt-8"
-          icon="🖼️"
-          title="Publicação não encontrada"
-          description="A publicação que procuras não existe, ainda não está publicada ou foi removida."
-          action-label="Voltar ao mural"
-          action-to="/mural"
-        />
-      </UContainer>
-    </section>
-  </div>
+          <p class="mt-5 text-lg leading-8 text-gray-600">
+            {{ post.excerpt }}
+          </p>
+
+          <div class="my-8 border-t border-gray-200" />
+
+          <p class="whitespace-pre-line leading-8 text-gray-700">
+            {{ post.content }}
+          </p>
+        </div>
+      </article>
+
+      <SharedEmptyState
+        v-else
+        class="mt-8"
+        icon="🖼️"
+        title="Publicação não encontrada"
+        description="Esta publicação não existe ou deixou de estar publicada."
+        action-label="Voltar ao mural"
+        action-to="/mural"
+      />
+    </UContainer>
+  </section>
 </template>
