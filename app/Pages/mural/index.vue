@@ -1,47 +1,37 @@
 <script setup lang="ts">
-import { usePosts } from '~/composables/usePosts'
-import { useSupabasePosts } from '~/composables/useSupabasePosts'
+import {
+  useSupabasePublicPosts,
+  type PublicPost
+} from '~/composables/useSupabasePublicPosts'
 
 useHead({
   title: 'Mural'
 })
 
-const { getPublishedPosts: getMockPublishedPosts } = usePosts()
-const { getPublishedPosts: getSupabasePublishedPosts } = useSupabasePosts()
+const { getPublishedPosts } = useSupabasePublicPosts()
 
+const posts = ref<PublicPost[]>([])
 const searchTerm = ref('')
-const selectedCategory = ref('Todos')
+const selectedCategory = ref('all')
+const isLoading = ref(true)
+const loadError = ref('')
 
-const {
-  data: supabasePosts,
-  pending,
-  refresh
-} = await useAsyncData('published-posts', () => {
-  return getSupabasePublishedPosts()
-})
-
-const mockPosts = computed(() => {
-  return getMockPublishedPosts()
-})
-
-const posts = computed(() => {
-  if (supabasePosts.value && supabasePosts.value.length) {
-    return supabasePosts.value
-  }
-
-  return mockPosts.value
-})
-
-const isUsingSupabase = computed(() => {
-  return Boolean(supabasePosts.value && supabasePosts.value.length)
-})
-
-const categoryOptions = computed(() => {
-  const categories = posts.value.map((post) => post.category)
-  return ['Todos', ...new Set(categories)]
+const categories = computed(() => {
+  return [
+    'all',
+    ...new Set(
+      posts.value
+        .map((post) => post.category)
+        .filter(Boolean)
+    )
+  ]
 })
 
 const filteredPosts = computed(() => {
+  const search = searchTerm.value
+    .trim()
+    .toLowerCase()
+
   return posts.value.filter((post) => {
     const matchesSearch = [
       post.title,
@@ -51,124 +41,190 @@ const filteredPosts = computed(() => {
     ]
       .join(' ')
       .toLowerCase()
-      .includes(searchTerm.value.toLowerCase())
+      .includes(search)
 
     const matchesCategory =
-      selectedCategory.value === 'Todos' ||
+      selectedCategory.value === 'all' ||
       post.category === selectedCategory.value
 
     return matchesSearch && matchesCategory
   })
 })
 
-const selectCategory = (category: string) => {
-  selectedCategory.value = category
+const formatDate = (value?: string) => {
+  if (!value) {
+    return ''
+  }
+
+  const date = value.includes('T')
+    ? new Date(value)
+    : new Date(`${value}T00:00:00`)
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(date)
 }
 
-const handleRefreshPosts = async () => {
-  await refresh()
+const loadPosts = async () => {
+  isLoading.value = true
+  loadError.value = ''
+
+  const result = await getPublishedPosts()
+
+  isLoading.value = false
+
+  if (!result.success) {
+    loadError.value =
+      result.error ||
+      'Não foi possível carregar o mural.'
+
+    return
+  }
+
+  posts.value = result.posts
 }
+
+const handleReload = async () => {
+  await loadPosts()
+}
+
+onMounted(async () => {
+  await loadPosts()
+})
 </script>
 
 <template>
   <div>
-    <section class="bg-gray-50 py-16">
+    <section class="bg-[#080808] py-16 text-white">
       <UContainer>
-        <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
-          Mural
+        <p class="text-sm font-bold uppercase tracking-[0.18em] text-amber-400">
+          Comunidade
         </p>
 
-        <h1 class="mt-3 text-4xl font-bold text-gray-950">
-          Memórias da comunidade
+        <h1 class="mt-3 text-4xl font-black sm:text-5xl">
+          Mural
         </h1>
 
-        <p class="mt-4 max-w-3xl text-lg leading-8 text-gray-700">
-          Fotografias, vídeos, rescaldos e publicações dos eventos e iniciativas do CCD de Fiolhais.
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-gray-300">
+          Notícias, novidades e momentos do Centro Cultural e
+          Desportivo de Fiolhais.
         </p>
+      </UContainer>
+    </section>
 
-        <div
-          v-if="isUsingSupabase"
-          class="mt-6 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
-        >
-          Publicações carregadas da base de dados oficial
-        </div>
+    <section class="bg-[#f8f4ea] py-12">
+      <UContainer>
+        <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div class="grid gap-4 lg:grid-cols-[1fr_260px_auto]">
+            <input
+              v-model="searchTerm"
+              type="search"
+              placeholder="Pesquisar no mural..."
+              class="rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
 
-        <div
-          v-else
-          class="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
-        >
-          A mostrar dados de demonstração
+            <select
+              v-model="selectedCategory"
+              class="rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+            >
+              <option value="all">
+                Todas as categorias
+              </option>
+
+              <option
+                v-for="category in categories.filter((category) => category !== 'all')"
+                :key="category"
+                :value="category"
+              >
+                {{ category }}
+              </option>
+            </select>
+
+            <button
+              type="button"
+              class="rounded-xl border border-amber-500 px-5 py-3 font-semibold text-amber-700 transition hover:bg-amber-50"
+              @click="handleReload"
+            >
+              Atualizar
+            </button>
+          </div>
         </div>
       </UContainer>
     </section>
 
-    <section class="py-12">
+    <section class="bg-white py-16">
       <UContainer>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <input
-            v-model="searchTerm"
-            type="search"
-            placeholder="Pesquisar publicação..."
-            class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 lg:max-w-3xl"
-          >
-
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="category in categoryOptions"
-              :key="category"
-              type="button"
-              class="rounded-xl border px-4 py-2 text-sm font-semibold transition"
-              :class="selectedCategory === category
-                ? 'border-amber-500 bg-amber-500 text-black'
-                : 'border-amber-300 bg-white text-amber-700 hover:bg-amber-50'"
-              @click="selectCategory(category)"
-            >
-              {{ category }}
-            </button>
-          </div>
-        </div>
-
         <div
-          v-if="pending"
-          class="mt-8 rounded-2xl border border-amber-200 bg-white p-8 text-center text-gray-700 shadow-sm"
+          v-if="isLoading"
+          class="rounded-3xl border border-amber-200 bg-gray-50 p-10 text-center text-gray-600"
         >
           A carregar publicações...
         </div>
 
         <div
-          v-else-if="filteredPosts.length"
-          class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+          v-else-if="loadError"
+          class="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-900"
         >
-          <PublicMuralCard
+          <p class="font-bold">
+            Não foi possível carregar o mural.
+          </p>
+
+          <p class="mt-2">
+            {{ loadError }}
+          </p>
+        </div>
+
+        <div
+          v-else-if="filteredPosts.length"
+          class="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+        >
+          <article
             v-for="post in filteredPosts"
             :key="post.id"
-            :title="post.title"
-            :category="post.category"
-            :description="post.excerpt"
-            :emoji="post.coverEmoji"
-            :to="`/mural/${post.slug}`"
-          />
+            class="flex flex-col rounded-3xl border border-amber-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 text-4xl">
+                {{ post.coverEmoji }}
+              </div>
+
+              <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                {{ post.category }}
+              </span>
+            </div>
+
+            <h2 class="mt-5 text-2xl font-bold text-gray-950">
+              {{ post.title }}
+            </h2>
+
+            <p class="mt-3 flex-1 leading-7 text-gray-600">
+              {{ post.excerpt }}
+            </p>
+
+            <p
+              v-if="post.publishedAt"
+              class="mt-5 text-sm text-gray-500"
+            >
+              {{ formatDate(post.publishedAt) }}
+            </p>
+
+            <NuxtLink
+              :to="`/mural/${post.slug}`"
+              class="mt-5 font-bold text-amber-700 transition hover:text-amber-600"
+            >
+              Ler publicação →
+            </NuxtLink>
+          </article>
         </div>
 
         <SharedEmptyState
           v-else
-          class="mt-8"
           icon="🖼️"
           title="Nenhuma publicação encontrada"
-          description="Tenta pesquisar por outro termo ou categoria. As publicações visíveis são apenas as que estão publicadas."
-          action-label="Voltar ao mural"
-          action-to="/mural"
+          description="Ainda não existem publicações ou os filtros selecionados não têm resultados."
         />
-
-        <div class="mt-8 text-center">
-          <button
-            type="button"
-            class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
-            @click="handleRefreshPosts"
-          >
-            Recarregar mural
-          </button>
-        </div>
       </UContainer>
     </section>
   </div>
