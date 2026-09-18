@@ -1,444 +1,560 @@
 <script setup lang="ts">
-import { useEvents } from '~/composables/useEvents'
-import { useMembers } from '~/composables/useMembers'
-import { clearPersistedProjectData } from '~/composables/usePersistedState'
+import {
+  useSupabaseAdminDashboard,
+  type AdminDashboardData,
+  type DashboardApplicationStatus,
+  type DashboardEventStatus,
+  type DashboardMessageStatus
+} from '~/composables/useSupabaseAdminDashboard'
 
 definePageMeta({
   layout: 'admin'
 })
 
-const {
-  getMembers,
-  getCurrentQuota
-} = useMembers()
+useHead({
+  title: 'Dashboard'
+})
 
-const {
-  getEvents,
-  registrations,
-  getEventRegisteredCount,
-  getEventPendingPaymentsCount
-} = useEvents()
+const { getDashboardData } = useSupabaseAdminDashboard()
 
 const currentYear = new Date().getFullYear()
 
-const members = getMembers()
-const events = getEvents()
+const dashboard = ref<AdminDashboardData | null>(null)
 
-const totalMembers = computed(() => {
-  return members.length
-})
+const isLoading = ref(true)
+const submitError = ref('')
 
-const activeMembers = computed(() => {
-  return members.filter((member) => member.status === 'active').length
-})
-
-const pendingMembers = computed(() => {
-  return members.filter((member) => member.status === 'pending').length
-})
-
-const overdueQuotas = computed(() => {
-  return members.filter((member) => {
-    return getCurrentQuota(member, currentYear)?.status === 'overdue'
-  }).length
-})
-
-const pendingQuotas = computed(() => {
-  return members.filter((member) => {
-    return getCurrentQuota(member, currentYear)?.status === 'pending'
-  }).length
-})
-
-const paidQuotas = computed(() => {
-  return members.filter((member) => {
-    return getCurrentQuota(member, currentYear)?.status === 'paid'
-  }).length
-})
-
-const totalEvents = computed(() => {
-  return events.length
-})
-
-const openEvents = computed(() => {
-  return events.filter((event) => event.status === 'open').length
-})
-
-const totalReservedSeats = computed(() => {
-  return events.reduce((total, event) => {
-    return total + getEventRegisteredCount(event.id)
-  }, 0)
-})
-
-const pendingPayments = computed(() => {
-  return events.reduce((total, event) => {
-    return total + getEventPendingPaymentsCount(event.id)
-  }, 0)
-})
-
-const totalEventRevenue = computed(() => {
-  return registrations.value
-    .filter((registration) => registration.paymentStatus === 'paid')
-    .reduce((total, registration) => total + registration.totalAmount, 0)
-})
-
-const pendingEventRevenue = computed(() => {
-  return registrations.value
-    .filter((registration) => registration.paymentStatus === 'pending')
-    .reduce((total, registration) => total + registration.totalAmount, 0)
-})
-
-const latestMembers = computed(() => {
-  return [...members]
-    .sort((a, b) => b.joinedAt.localeCompare(a.joinedAt))
-    .slice(0, 4)
-})
-
-const latestRegistrations = computed(() => {
-  return [...registrations.value]
-    .sort((a, b) => b.registeredAt.localeCompare(a.registeredAt))
-    .slice(0, 4)
-})
-
-const nextActions = computed(() => {
-  const actions = []
-
-  if (pendingMembers.value > 0) {
-    actions.push(`${pendingMembers.value} pedido(s) de sócio por validar`)
-  }
-
-  if (pendingQuotas.value > 0 || overdueQuotas.value > 0) {
-    actions.push(`${pendingQuotas.value + overdueQuotas.value} quota(s) pendentes ou em atraso`)
-  }
-
-  if (pendingPayments.value > 0) {
-    actions.push(`${pendingPayments.value} pagamento(s) de eventos pendente(s)`)
-  }
-
-  if (openEvents.value > 0) {
-    actions.push(`${openEvents.value} evento(s) com inscrições abertas`)
-  }
-
-  if (!actions.length) {
-    actions.push('Não existem ações urgentes neste momento')
-  }
-
-  return actions
-})
-
-const getMemberStatusLabel = (status: string) => {
-  if (status === 'active') return 'Ativo'
-  if (status === 'pending') return 'Pendente'
-
-  return 'Inativo'
+const formatMoney = (value: number) => {
+  return new Intl.NumberFormat('pt-PT', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value)
 }
 
-const getMemberStatusColor = (status: string) => {
-  if (status === 'active') return 'success'
-  if (status === 'pending') return 'warning'
-
-  return 'neutral'
+const formatDateTime = (value: string) => {
+  return new Intl.DateTimeFormat('pt-PT', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(new Date(value))
 }
 
-const getPaymentLabel = (status: string) => {
-  if (status === 'paid') return 'Pago'
-  if (status === 'pending') return 'Pendente'
+const formatEventDate = (
+  eventDate: string | undefined,
+  dateLabel: string
+) => {
+  if (!eventDate) {
+    return dateLabel
+  }
 
-  return 'Cancelado'
+  return new Intl.DateTimeFormat('pt-PT', {
+    dateStyle: 'short'
+  }).format(
+    new Date(`${eventDate}T00:00:00`)
+  )
 }
 
-const getPaymentColor = (status: string) => {
-  if (status === 'paid') return 'success'
-  if (status === 'pending') return 'warning'
+const getMessageStatusLabel = (
+  status: DashboardMessageStatus
+) => {
+  if (status === 'new') {
+    return 'Nova'
+  }
 
-  return 'neutral'
+  if (status === 'read') {
+    return 'Lida'
+  }
+
+  return 'Arquivada'
 }
-const handleResetLocalData = async () => {
-  clearPersistedProjectData()
-  await reloadNuxtApp()
+
+const getMessageStatusClass = (
+  status: DashboardMessageStatus
+) => {
+  if (status === 'new') {
+    return 'border-amber-200 bg-amber-50 text-amber-800'
+  }
+
+  if (status === 'read') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  return 'border-gray-200 bg-gray-50 text-gray-600'
 }
+
+const getApplicationStatusLabel = (
+  status: DashboardApplicationStatus
+) => {
+  if (status === 'new') {
+    return 'Novo'
+  }
+
+  if (status === 'approved') {
+    return 'Aprovado'
+  }
+
+  return 'Rejeitado'
+}
+
+const getApplicationStatusClass = (
+  status: DashboardApplicationStatus
+) => {
+  if (status === 'new') {
+    return 'border-amber-200 bg-amber-50 text-amber-800'
+  }
+
+  if (status === 'approved') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  return 'border-red-200 bg-red-50 text-red-700'
+}
+
+const getEventStatusLabel = (
+  status: DashboardEventStatus
+) => {
+  if (status === 'draft') {
+    return 'Rascunho'
+  }
+
+  if (status === 'open') {
+    return 'Aberto'
+  }
+
+  if (status === 'soon') {
+    return 'Brevemente'
+  }
+
+  if (status === 'sold_out') {
+    return 'Esgotado'
+  }
+
+  return 'Fechado'
+}
+
+const getEventStatusClass = (
+  status: DashboardEventStatus
+) => {
+  if (status === 'open') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  }
+
+  if (status === 'soon') {
+    return 'border-amber-200 bg-amber-50 text-amber-800'
+  }
+
+  if (status === 'sold_out') {
+    return 'border-red-200 bg-red-50 text-red-700'
+  }
+
+  if (status === 'closed') {
+    return 'border-gray-200 bg-gray-50 text-gray-600'
+  }
+
+  return 'border-sky-200 bg-sky-50 text-sky-700'
+}
+
+const loadDashboard = async () => {
+  isLoading.value = true
+  submitError.value = ''
+
+  const result = await getDashboardData()
+
+  isLoading.value = false
+
+  if (!result.success || !result.data) {
+    submitError.value =
+      result.error ||
+      'Não foi possível carregar os dados do dashboard.'
+
+    return
+  }
+
+  dashboard.value = result.data
+}
+
+const handleReload = async () => {
+  await loadDashboard()
+}
+
+onMounted(async () => {
+  await loadDashboard()
+})
 </script>
 
 <template>
-  <UContainer class="py-10">
-    <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <UContainer class="py-8">
+    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-          Dashboard
+        <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
+          Administração
         </p>
 
-        <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-950">
-          Painel de administração
+        <h1 class="mt-2 text-3xl font-bold text-gray-950">
+          Dashboard
         </h1>
 
         <p class="mt-2 text-gray-600">
-          Visão geral da atividade do CCD: sócios, quotas, eventos e inscrições.
+          Visão geral dos dados reais do CCD Fiolhais.
         </p>
       </div>
 
-<div class="flex flex-wrap gap-2">
-  <UButton
-    to="/admin/socios/novo"
-    variant="outline"
-  >
-    Novo sócio
-  </UButton>
-
-  <UButton to="/admin/eventos/novo">
-    Novo evento
-  </UButton>
-
-  <UButton
-    color="neutral"
-    variant="soft"
-    @click="handleResetLocalData"
-  >
-    Repor dados locais
-  </UButton>
-</div>
+      <button
+        type="button"
+        class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+        @click="handleReload"
+      >
+        Atualizar dashboard
+      </button>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-      <AdminStatCard
-        label="Sócios"
-        :value="totalMembers"
-        :description="`${activeMembers} ativos · ${pendingMembers} pendentes`"
-      />
+    <div
+      v-if="submitError"
+      class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+    >
+      <p class="font-bold">
+        Erro
+      </p>
 
-      <AdminStatCard
-        label="Quotas pagas"
-        :value="paidQuotas"
-        :description="`Ano ${currentYear}`"
-      />
-
-      <AdminStatCard
-        label="Eventos"
-        :value="totalEvents"
-        :description="`${openEvents} com inscrições abertas`"
-      />
-
-      <AdminStatCard
-        label="Lugares reservados"
-        :value="totalReservedSeats"
-        description="Total de lugares em eventos"
-      />
+      <p class="mt-2">
+        {{ submitError }}
+      </p>
     </div>
 
-    <div class="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-      <AdminStatCard
-        label="Quotas pendentes"
-        :value="pendingQuotas + overdueQuotas"
-        :description="`${overdueQuotas} em atraso`"
-      />
-
-      <AdminStatCard
-        label="Pagamentos pendentes"
-        :value="pendingPayments"
-        description="Inscrições ainda por pagar"
-      />
-
-      <AdminStatCard
-        label="Receita recebida"
-        :value="`${totalEventRevenue}€`"
-        description="Inscrições pagas"
-      />
-
-      <AdminStatCard
-        label="Receita pendente"
-        :value="`${pendingEventRevenue}€`"
-        description="Inscrições por pagar"
-      />
+    <div
+      v-if="isLoading"
+      class="rounded-3xl border border-amber-200 bg-white p-10 text-center text-gray-600 shadow-sm"
+    >
+      A carregar dados do Supabase...
     </div>
 
-    <div class="mt-8 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between gap-4">
+    <div
+      v-else-if="dashboard"
+      class="space-y-8"
+    >
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard
+          label="Sócios"
+          :value="dashboard.stats.totalMembers"
+          description="Total registado"
+        />
+
+        <AdminStatCard
+          label="Sócios ativos"
+          :value="dashboard.stats.activeMembers"
+          description="Atualmente ativos"
+        />
+
+        <AdminStatCard
+          label="Pedidos de sócio"
+          :value="dashboard.stats.pendingApplications"
+          description="Ainda por analisar"
+        />
+
+        <AdminStatCard
+          :label="`Quotas ${currentYear}`"
+          :value="dashboard.stats.unpaidQuotas"
+          description="Pendentes ou em atraso"
+        />
+
+        <AdminStatCard
+          label="Eventos abertos"
+          :value="dashboard.stats.openEvents"
+          description="Com inscrições abertas"
+        />
+
+        <AdminStatCard
+          label="Inscrições pendentes"
+          :value="dashboard.stats.pendingRegistrations"
+          description="Eventos por confirmar"
+        />
+
+        <AdminStatCard
+          label="Mensagens novas"
+          :value="dashboard.stats.newMessages"
+          description="Ainda por ler"
+        />
+
+        <AdminStatCard
+          :label="`Quotas recebidas ${currentYear}`"
+          :value="formatMoney(dashboard.stats.paidQuotaAmount)"
+          description="Valor marcado como pago"
+        />
+      </div>
+
+      <div class="grid gap-8 xl:grid-cols-3">
+        <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-gray-200 p-6">
             <div>
-              <h2 class="text-lg font-bold text-gray-950">
-                Ações recomendadas
+              <h2 class="text-xl font-bold text-gray-950">
+                Pedidos de sócio
               </h2>
 
-              <p class="mt-1 text-sm text-gray-600">
-                Tarefas que a direção deve acompanhar.
+              <p class="mt-1 text-sm text-gray-500">
+                Pedidos mais recentes
               </p>
             </div>
-          </div>
-        </template>
 
-        <div class="space-y-3">
-          <div
-            v-for="action in nextActions"
-            :key="action"
-            class="rounded-xl border border-gray-200 p-4 text-sm text-gray-700"
-          >
-            {{ action }}
-          </div>
-        </div>
-
-        <template #footer>
-          <div class="flex flex-wrap gap-2">
-            <UButton
-              to="/admin/socios"
-              variant="outline"
-            >
-              Ver sócios
-            </UButton>
-
-            <UButton
-              to="/admin/quotas"
-              variant="outline"
-            >
-              Ver quotas
-            </UButton>
-
-            <UButton to="/admin/eventos">
-              Ver eventos
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-
-      <UCard>
-        <template #header>
-          <h2 class="text-lg font-bold text-gray-950">
-            Resumo financeiro dos eventos
-          </h2>
-        </template>
-
-        <div class="space-y-4">
-          <div class="rounded-xl bg-gray-50 p-4">
-            <p class="text-sm text-gray-500">
-              Receita confirmada
-            </p>
-
-            <p class="mt-2 text-3xl font-bold text-gray-950">
-              {{ totalEventRevenue }}€
-            </p>
-          </div>
-
-          <div class="rounded-xl bg-gray-50 p-4">
-            <p class="text-sm text-gray-500">
-              Receita ainda pendente
-            </p>
-
-            <p class="mt-2 text-3xl font-bold text-gray-950">
-              {{ pendingEventRevenue }}€
-            </p>
-          </div>
-
-          <div class="rounded-xl bg-gray-50 p-4">
-            <p class="text-sm text-gray-500">
-              Total potencial
-            </p>
-
-            <p class="mt-2 text-3xl font-bold text-gray-950">
-              {{ totalEventRevenue + pendingEventRevenue }}€
-            </p>
-          </div>
-        </div>
-      </UCard>
-    </div>
-
-    <div class="mt-8 grid gap-6 lg:grid-cols-2">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between gap-4">
-            <h2 class="text-lg font-bold text-gray-950">
-              Últimos sócios
-            </h2>
-
-            <UButton
-              to="/admin/socios"
-              variant="link"
+            <NuxtLink
+              to="/admin/pedidos-socio"
+              class="text-sm font-semibold text-amber-700 hover:text-amber-600"
             >
               Ver todos
-            </UButton>
+            </NuxtLink>
           </div>
-        </template>
 
-        <div class="space-y-3">
           <div
-            v-for="member in latestMembers"
-            :key="member.id"
-            class="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4"
+            v-if="dashboard.recentApplications.length"
+            class="divide-y divide-gray-200"
           >
-            <div>
-              <p class="font-medium text-gray-950">
-                {{ member.fullName }}
+            <article
+              v-for="application in dashboard.recentApplications"
+              :key="application.id"
+              class="p-5"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-bold text-gray-950">
+                    {{ application.fullName }}
+                  </p>
+
+                  <p class="mt-1 break-all text-sm text-gray-600">
+                    {{ application.email }}
+                  </p>
+
+                  <p class="mt-1 text-sm text-gray-500">
+                    {{ application.phone }}
+                  </p>
+                </div>
+
+                <span
+                  class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold"
+                  :class="getApplicationStatusClass(application.status)"
+                >
+                  {{ getApplicationStatusLabel(application.status) }}
+                </span>
+              </div>
+
+              <p class="mt-3 text-xs text-gray-500">
+                {{ formatDateTime(application.createdAt) }}
               </p>
-
-              <p class="text-sm text-gray-500">
-                Nº {{ member.number }} · {{ member.joinedAt }}
-              </p>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <UBadge
-                :color="getMemberStatusColor(member.status)"
-                variant="soft"
-              >
-                {{ getMemberStatusLabel(member.status) }}
-              </UBadge>
-
-              <UButton
-                :to="`/admin/socios/${member.number}`"
-                size="sm"
-                variant="outline"
-              >
-                Ver
-              </UButton>
-            </div>
+            </article>
           </div>
-        </div>
-      </UCard>
 
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between gap-4">
-            <h2 class="text-lg font-bold text-gray-950">
-              Últimas inscrições
-            </h2>
+          <div
+            v-else
+            class="p-6 text-sm text-gray-500"
+          >
+            Ainda não existem pedidos de sócio.
+          </div>
+        </section>
 
-            <UButton
+        <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-gray-200 p-6">
+            <div>
+              <h2 class="text-xl font-bold text-gray-950">
+                Mensagens
+              </h2>
+
+              <p class="mt-1 text-sm text-gray-500">
+                Contactos mais recentes
+              </p>
+            </div>
+
+            <NuxtLink
+              to="/admin/mensagens"
+              class="text-sm font-semibold text-amber-700 hover:text-amber-600"
+            >
+              Ver todas
+            </NuxtLink>
+          </div>
+
+          <div
+            v-if="dashboard.recentMessages.length"
+            class="divide-y divide-gray-200"
+          >
+            <article
+              v-for="message in dashboard.recentMessages"
+              :key="message.id"
+              class="p-5"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-bold text-gray-950">
+                    {{ message.fullName }}
+                  </p>
+
+                  <p class="mt-1 break-all text-sm text-gray-600">
+                    {{ message.email }}
+                  </p>
+                </div>
+
+                <span
+                  class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold"
+                  :class="getMessageStatusClass(message.status)"
+                >
+                  {{ getMessageStatusLabel(message.status) }}
+                </span>
+              </div>
+
+              <p class="mt-3 text-xs text-gray-500">
+                {{ formatDateTime(message.createdAt) }}
+              </p>
+            </article>
+          </div>
+
+          <div
+            v-else
+            class="p-6 text-sm text-gray-500"
+          >
+            Ainda não existem mensagens.
+          </div>
+        </section>
+
+        <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-gray-200 p-6">
+            <div>
+              <h2 class="text-xl font-bold text-gray-950">
+                Eventos
+              </h2>
+
+              <p class="mt-1 text-sm text-gray-500">
+                Eventos mais recentes
+              </p>
+            </div>
+
+            <NuxtLink
               to="/admin/eventos"
-              variant="link"
+              class="text-sm font-semibold text-amber-700 hover:text-amber-600"
             >
-              Ver eventos
-            </UButton>
-          </div>
-        </template>
-
-        <div class="space-y-3">
-          <div
-            v-for="registration in latestRegistrations"
-            :key="registration.id"
-            class="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-4"
-          >
-            <div>
-              <p class="font-medium text-gray-950">
-                {{ registration.name }}
-              </p>
-
-              <p class="text-sm text-gray-500">
-                {{ registration.quantity }} lugar(es) · {{ registration.totalAmount }}€
-              </p>
-            </div>
-
-            <UBadge
-              :color="getPaymentColor(registration.paymentStatus)"
-              variant="soft"
-            >
-              {{ getPaymentLabel(registration.paymentStatus) }}
-            </UBadge>
+              Ver todos
+            </NuxtLink>
           </div>
 
           <div
-            v-if="!latestRegistrations.length"
-            class="py-8 text-center text-sm text-gray-500"
+            v-if="dashboard.recentEvents.length"
+            class="divide-y divide-gray-200"
           >
-            Ainda não existem inscrições.
+            <article
+              v-for="event in dashboard.recentEvents"
+              :key="event.id"
+              class="p-5"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <NuxtLink
+                    :to="`/admin/eventos/${event.slug}`"
+                    class="font-bold text-gray-950 transition hover:text-amber-700"
+                  >
+                    {{ event.title }}
+                  </NuxtLink>
+
+                  <p class="mt-1 text-sm text-gray-500">
+                    {{ formatEventDate(event.eventDate, event.dateLabel) }}
+                  </p>
+
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ event.isPublished ? 'Publicado no site' : 'Não publicado' }}
+                  </p>
+                </div>
+
+                <span
+                  class="shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold"
+                  :class="getEventStatusClass(event.status)"
+                >
+                  {{ getEventStatusLabel(event.status) }}
+                </span>
+              </div>
+            </article>
           </div>
+
+          <div
+            v-else
+            class="p-6 text-sm text-gray-500"
+          >
+            Ainda não existem eventos.
+          </div>
+        </section>
+      </div>
+
+      <section class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+        <h2 class="text-2xl font-bold text-gray-950">
+          Acessos rápidos
+        </h2>
+
+        <p class="mt-2 text-gray-600">
+          Acede diretamente às principais áreas de gestão.
+        </p>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <NuxtLink
+            to="/admin/socios"
+            class="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">
+              👥
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Sócios
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Consultar e editar sócios
+            </p>
+          </NuxtLink>
+
+          <NuxtLink
+            to="/admin/quotas"
+            class="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">
+              💶
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Quotas
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Gerir pagamentos e quotas
+            </p>
+          </NuxtLink>
+
+          <NuxtLink
+            to="/admin/eventos"
+            class="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">
+              📅
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Eventos
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Eventos e inscrições
+            </p>
+          </NuxtLink>
+
+          <NuxtLink
+            to="/admin/mural"
+            class="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">
+              🖼️
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Mural
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Gerir publicações
+            </p>
+          </NuxtLink>
         </div>
-      </UCard>
+      </section>
     </div>
   </UContainer>
 </template>
