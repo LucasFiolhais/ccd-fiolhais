@@ -3,7 +3,15 @@ import {
   useSupabasePublicEvents,
   type PublicEvent
 } from '~/composables/useSupabasePublicEvents'
+
 import { useSupabaseEventRegistrations } from '~/composables/useSupabaseEventRegistrations'
+
+import { useSupabaseMemberAuth } from '~/composables/useSupabaseMemberAuth'
+
+import {
+  useSupabaseMemberArea,
+  type MemberAreaData
+} from '~/composables/useSupabaseMemberArea'
 
 const route = useRoute()
 
@@ -15,10 +23,22 @@ const {
   createEventRegistration
 } = useSupabaseEventRegistrations()
 
+const {
+  isLoggedIn,
+  loadMemberUser
+} = useSupabaseMemberAuth()
+
+const {
+  getMyMemberData
+} = useSupabaseMemberArea()
+
 const event = ref<PublicEvent | null>(null)
+
+const loggedMember = ref<MemberAreaData | null>(null)
 
 const isLoading = ref(true)
 const loadError = ref('')
+
 const isSubmitting = ref(false)
 const submitError = ref('')
 const successMessage = ref('')
@@ -53,6 +73,10 @@ const canRegister = computed(() => {
   return event.value?.status === 'open'
 })
 
+const isAuthenticatedMember = computed(() => {
+  return Boolean(loggedMember.value)
+})
+
 const displayDate = computed(() => {
   if (!event.value) {
     return ''
@@ -76,9 +100,11 @@ const displayTime = computed(() => {
     return ''
   }
 
-  return event.value.timeLabel ||
+  return (
+    event.value.timeLabel ||
     event.value.eventTime ||
     'Hora a anunciar'
+  )
 })
 
 const clearErrors = () => {
@@ -94,21 +120,26 @@ const validateForm = () => {
   clearErrors()
 
   if (!form.fullName.trim()) {
-    errors.fullName = 'O nome completo é obrigatório.'
+    errors.fullName =
+      'O nome completo é obrigatório.'
   }
 
   if (!form.email.trim()) {
-    errors.email = 'O email é obrigatório.'
+    errors.email =
+      'O email é obrigatório.'
   } else if (!form.email.includes('@')) {
-    errors.email = 'Insere um email válido.'
+    errors.email =
+      'Insere um email válido.'
   }
 
   if (!form.phone.trim()) {
-    errors.phone = 'O telefone é obrigatório.'
+    errors.phone =
+      'O telefone é obrigatório.'
   }
 
   if (!form.seats || form.seats < 1) {
-    errors.seats = 'Escolhe pelo menos um lugar.'
+    errors.seats =
+      'Escolhe pelo menos um lugar.'
   }
 
   if (form.seats > 10) {
@@ -125,23 +156,42 @@ const validateForm = () => {
 }
 
 const resetForm = () => {
-  form.fullName = ''
-  form.email = ''
-  form.phone = ''
-  form.memberNumber = ''
+  /*
+   * Se o utilizador estiver autenticado como sócio,
+   * depois da inscrição mantemos os seus dados pessoais
+   * preenchidos e limpamos apenas os dados específicos
+   * da inscrição.
+   */
+  if (loggedMember.value) {
+    form.fullName =
+      loggedMember.value.fullName
+
+    form.email =
+      loggedMember.value.email
+
+    form.phone =
+      loggedMember.value.phone
+
+    form.memberNumber =
+      loggedMember.value.number
+  } else {
+    form.fullName = ''
+    form.email = ''
+    form.phone = ''
+    form.memberNumber = ''
+  }
+
   form.seats = 1
   form.notes = ''
 }
 
 const loadEvent = async () => {
-  isLoading.value = true
   loadError.value = ''
 
-  const result = await getPublishedEventBySlug(
-    eventSlug.value
-  )
-
-  isLoading.value = false
+  const result =
+    await getPublishedEventBySlug(
+      eventSlug.value
+    )
 
   if (!result.success) {
     loadError.value =
@@ -149,10 +199,51 @@ const loadEvent = async () => {
       'Não foi possível carregar o evento.'
 
     event.value = null
+
     return
   }
 
   event.value = result.event
+}
+
+const loadLoggedMember = async () => {
+  /*
+   * Verifico primeiro se existe uma sessão Supabase.
+   * Esta página continua a funcionar normalmente
+   * para visitantes que não tenham iniciado sessão.
+   */
+  await loadMemberUser()
+
+  if (!isLoggedIn.value) {
+    loggedMember.value = null
+    return
+  }
+
+  const result =
+    await getMyMemberData()
+
+  if (!result.success || !result.member) {
+    loggedMember.value = null
+    return
+  }
+
+  loggedMember.value = result.member
+
+  /*
+   * Preenchimento automático do formulário com
+   * os dados reais associados à conta autenticada.
+   */
+  form.fullName =
+    result.member.fullName
+
+  form.email =
+    result.member.email
+
+  form.phone =
+    result.member.phone
+
+  form.memberNumber =
+    result.member.number
 }
 
 const handleRegistration = async () => {
@@ -173,17 +264,25 @@ const handleRegistration = async () => {
 
   isSubmitting.value = true
   successMessage.value = ''
+  submitError.value = ''
 
-  const result = await createEventRegistration({
-    eventId: event.value.id,
-    fullName: form.fullName.trim(),
-    email: form.email.trim(),
-    phone: form.phone.trim(),
-    memberNumber:
-      form.memberNumber.trim() || undefined,
-    seats: form.seats,
-    notes: form.notes.trim() || undefined
-  })
+  const result =
+    await createEventRegistration({
+      eventId: event.value.id,
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+
+      memberNumber:
+        form.memberNumber.trim() ||
+        undefined,
+
+      seats: form.seats,
+
+      notes:
+        form.notes.trim() ||
+        undefined
+    })
 
   isSubmitting.value = false
 
@@ -202,7 +301,12 @@ const handleRegistration = async () => {
 }
 
 onMounted(async () => {
+  isLoading.value = true
+
   await loadEvent()
+  await loadLoggedMember()
+
+  isLoading.value = false
 })
 </script>
 
@@ -350,6 +454,39 @@ onMounted(async () => {
             </p>
           </div>
 
+          <!-- Informação de sessão -->
+          <div
+            v-if="isAuthenticatedMember && loggedMember"
+            class="m-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5"
+          >
+            <div class="flex gap-3">
+              <div class="text-2xl">
+                ✅
+              </div>
+
+              <div>
+                <p class="font-bold text-emerald-900">
+                  Sessão de sócio detetada
+                </p>
+
+                <p class="mt-1 text-sm leading-6 text-emerald-800">
+                  Estás a fazer esta inscrição como
+                  <strong>
+                    {{ loggedMember.fullName }}
+                  </strong>,
+                  sócio nº
+                  <strong>
+                    {{ loggedMember.number }}
+                  </strong>.
+                </p>
+
+                <p class="mt-1 text-sm text-emerald-700">
+                  Os teus dados foram preenchidos automaticamente.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div
             v-if="successMessage"
             class="m-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900"
@@ -388,6 +525,7 @@ onMounted(async () => {
               <input
                 v-model="form.fullName"
                 type="text"
+                autocomplete="name"
                 class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
                 :class="errors.fullName ? 'border-red-400' : 'border-gray-300'"
               >
@@ -409,6 +547,7 @@ onMounted(async () => {
                 <input
                   v-model="form.email"
                   type="email"
+                  autocomplete="email"
                   class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
                   :class="errors.email ? 'border-red-400' : 'border-gray-300'"
                 >
@@ -429,6 +568,7 @@ onMounted(async () => {
                 <input
                   v-model="form.phone"
                   type="tel"
+                  autocomplete="tel"
                   class="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
                   :class="errors.phone ? 'border-red-400' : 'border-gray-300'"
                 >
@@ -448,12 +588,30 @@ onMounted(async () => {
                   Número de sócio
                 </label>
 
+                <!-- Sócio autenticado -->
                 <input
+                  v-if="loggedMember"
+                  :value="loggedMember.number"
+                  type="text"
+                  readonly
+                  class="mt-2 w-full cursor-not-allowed rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 font-semibold text-emerald-900 outline-none"
+                >
+
+                <!-- Visitante -->
+                <input
+                  v-else
                   v-model="form.memberNumber"
                   type="text"
                   placeholder="Opcional"
                   class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
                 >
+
+                <p
+                  v-if="loggedMember"
+                  class="mt-1 text-xs text-gray-500"
+                >
+                  Identificado automaticamente através da tua conta.
+                </p>
               </div>
 
               <div>
