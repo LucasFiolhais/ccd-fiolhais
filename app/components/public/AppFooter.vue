@@ -1,8 +1,3 @@
-<script setup lang="ts">
-import { U } from 'vue-router/dist/index-BQLwgiyK.js';
-
-</script>
-
 <template>
   <footer class="border-t border-gray-200 bg-white">
     <UContainer class="py-10">

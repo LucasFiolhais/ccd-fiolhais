@@ -1,13 +1,25 @@
 <script setup lang="ts">
-import { useMembers } from '~/composables/useMembers'
-import type { MemberStatus } from '~/types/member'
+import {
+  useSupabaseAdminMembers,
+  type AdminMemberStatus
+} from '~/composables/useSupabaseAdminMembers'
 
 definePageMeta({
   layout: 'admin'
 })
 
 const router = useRouter()
-const { createMember } = useMembers()
+
+const {
+  createMember
+} = useSupabaseAdminMembers()
+
+useHead({
+  title: 'Novo Sócio'
+})
+
+const isSubmitting = ref(false)
+const submitError = ref('')
 
 const form = reactive({
   fullName: '',
@@ -15,7 +27,7 @@ const form = reactive({
   phone: '',
   address: '',
   birthDate: '',
-  status: 'pending' as MemberStatus,
+  status: 'pending' as AdminMemberStatus,
   notes: ''
 })
 
@@ -46,27 +58,34 @@ const clearErrors = () => {
   errors.email = ''
   errors.phone = ''
   errors.address = ''
+
+  submitError.value = ''
 }
 
 const validateForm = () => {
   clearErrors()
 
   if (!form.fullName.trim()) {
-    errors.fullName = 'O nome completo é obrigatório.'
+    errors.fullName =
+      'O nome completo é obrigatório.'
   }
 
   if (!form.email.trim()) {
-    errors.email = 'O email é obrigatório.'
+    errors.email =
+      'O email é obrigatório.'
   } else if (!form.email.includes('@')) {
-    errors.email = 'Insere um email válido.'
+    errors.email =
+      'Insere um email válido.'
   }
 
   if (!form.phone.trim()) {
-    errors.phone = 'O telefone é obrigatório.'
+    errors.phone =
+      'O telefone é obrigatório.'
   }
 
   if (!form.address.trim()) {
-    errors.address = 'A morada é obrigatória.'
+    errors.address =
+      'A morada é obrigatória.'
   }
 
   return (
@@ -82,104 +101,130 @@ const handleSubmit = async () => {
     return
   }
 
-  const newMember = createMember({
+  isSubmitting.value = true
+  submitError.value = ''
+
+  const result = await createMember({
     fullName: form.fullName,
     email: form.email,
     phone: form.phone,
     address: form.address,
-    birthDate: form.birthDate,
+    birthDate:
+      form.birthDate || undefined,
     status: form.status,
-    notes: form.notes
+    notes:
+      form.notes || undefined
   })
 
-  await router.push(`/admin/socios/${newMember.number}`)
+  isSubmitting.value = false
+
+  if (
+    !result.success ||
+    !result.member
+  ) {
+    submitError.value =
+      result.error ||
+      'Não foi possível criar o sócio.'
+
+    return
+  }
+
+  await router.push(
+    `/admin/socios/${result.member.number}`
+  )
 }
 </script>
 
 <template>
   <UContainer class="py-10">
-    <UButton
+    <NuxtLink
       to="/admin/socios"
-      variant="link"
-      class="mb-6 px-0"
+      class="mb-6 inline-block text-sm font-semibold text-amber-700 hover:text-amber-600"
     >
       ← Voltar aos sócios
-    </UButton>
+    </NuxtLink>
 
-    <div class="mb-8">
-      <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-        Novo sócio
-      </p>
+    <div class="mx-auto max-w-3xl">
+      <div class="mb-8">
+        <p class="text-sm font-bold uppercase tracking-wide text-amber-600">
+          Administração
+        </p>
 
-      <h1 class="mt-2 text-3xl font-bold text-gray-950">
-        Criar sócio
-      </h1>
+        <h1 class="mt-2 text-3xl font-black text-gray-950">
+          Novo sócio
+        </h1>
 
-      <p class="mt-2 text-gray-600">
-        Regista manualmente um novo sócio no backoffice. Mais tarde este formulário será ligado ao Supabase.
-      </p>
-    </div>
+        <p class="mt-3 text-gray-600">
+          Regista manualmente um novo sócio no sistema.
+        </p>
+      </div>
 
-    <form
-      class="grid gap-8 lg:grid-cols-[1fr_360px]"
-      @submit.prevent="handleSubmit"
-    >
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Dados pessoais
-            </h2>
-          </template>
+      <div
+        v-if="submitError"
+        class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+      >
+        <p class="font-bold">
+          Não foi possível criar o sócio
+        </p>
 
-          <div class="space-y-5">
+        <p class="mt-2">
+          {{ submitError }}
+        </p>
+      </div>
+
+      <form
+        class="rounded-3xl border border-amber-200 bg-white shadow-sm"
+        @submit.prevent="handleSubmit"
+      >
+        <div class="space-y-5 p-6">
+          <UFormField
+            label="Nome completo"
+            :error="errors.fullName"
+          >
+            <UInput
+              v-model="form.fullName"
+              size="lg"
+              placeholder="Nome do sócio"
+            />
+          </UFormField>
+
+          <div class="grid gap-5 md:grid-cols-2">
             <UFormField
-              label="Nome completo"
-              :error="errors.fullName"
+              label="Email"
+              :error="errors.email"
             >
               <UInput
-                v-model="form.fullName"
-                placeholder="Ex: Lucas Fiolhais"
+                v-model="form.email"
+                type="email"
                 size="lg"
+                placeholder="email@exemplo.pt"
               />
             </UFormField>
-
-            <div class="grid gap-5 md:grid-cols-2">
-              <UFormField
-                label="Email"
-                :error="errors.email"
-              >
-                <UInput
-                  v-model="form.email"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  size="lg"
-                />
-              </UFormField>
-
-              <UFormField
-                label="Telefone"
-                :error="errors.phone"
-              >
-                <UInput
-                  v-model="form.phone"
-                  placeholder="912 345 678"
-                  size="lg"
-                />
-              </UFormField>
-            </div>
 
             <UFormField
-              label="Morada"
-              :error="errors.address"
+              label="Telefone"
+              :error="errors.phone"
             >
-              <UTextarea
-                v-model="form.address"
-                placeholder="Rua, número, localidade e código postal"
+              <UInput
+                v-model="form.phone"
                 size="lg"
+                placeholder="912345678"
               />
             </UFormField>
+          </div>
 
+          <UFormField
+            label="Morada"
+            :error="errors.address"
+          >
+            <UTextarea
+              v-model="form.address"
+              :rows="3"
+              placeholder="Morada completa"
+            />
+          </UFormField>
+
+          <div class="grid gap-5 md:grid-cols-2">
             <UFormField label="Data de nascimento">
               <UInput
                 v-model="form.birthDate"
@@ -188,91 +233,52 @@ const handleSubmit = async () => {
               />
             </UFormField>
 
-            <UFormField label="Notas internas">
-              <UTextarea
-                v-model="form.notes"
-                placeholder="Ex: pedido recebido por telefone, sócio antigo, observações da direção..."
-                size="lg"
-                :rows="4"
-              />
-            </UFormField>
-          </div>
-        </UCard>
-      </div>
-
-      <div class="space-y-6">
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Estado do sócio
-            </h2>
-          </template>
-
-          <div class="space-y-5">
             <UFormField label="Estado">
-              <USelect
+              <select
                 v-model="form.status"
-                :items="statusOptions"
-                size="lg"
-              />
+                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950"
+              >
+                <option
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
             </UFormField>
-
-            <div class="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-              <p>
-                Por defeito, o novo sócio fica com uma quota do ano atual em estado
-                <strong>Pendente</strong>.
-              </p>
-
-              <p class="mt-2">
-                Depois, na ficha do sócio, podes usar o botão
-                <strong>Marcar como paga</strong>.
-              </p>
-            </div>
-          </div>
-        </UCard>
-
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-bold text-gray-950">
-              Pré-visualização
-            </h2>
-          </template>
-
-          <div class="rounded-2xl border border-gray-200 p-5">
-            <p class="text-sm font-semibold uppercase tracking-wide text-primary">
-              Novo sócio
-            </p>
-
-            <h3 class="mt-2 text-xl font-bold text-gray-950">
-              {{ form.fullName || 'Nome do sócio' }}
-            </h3>
-
-            <div class="mt-4 space-y-2 text-sm text-gray-600">
-              <p>
-                {{ form.email || 'email@exemplo.com' }}
-              </p>
-
-              <p>
-                {{ form.phone || 'Telefone' }}
-              </p>
-
-              <p>
-                {{ form.address || 'Morada' }}
-              </p>
-            </div>
           </div>
 
-          <template #footer>
-            <UButton
-              type="submit"
-              size="lg"
-              block
-            >
-              Criar sócio
-            </UButton>
-          </template>
-        </UCard>
-      </div>
-    </form>
+          <UFormField label="Observações">
+            <UTextarea
+              v-model="form.notes"
+              :rows="4"
+              placeholder="Informação adicional sobre o sócio."
+            />
+          </UFormField>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-gray-200 p-6 sm:flex-row sm:justify-end">
+          <NuxtLink
+            to="/admin/socios"
+            class="rounded-xl border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700"
+          >
+            Cancelar
+          </NuxtLink>
+
+          <button
+            type="submit"
+            class="rounded-xl bg-amber-500 px-6 py-3 font-bold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isSubmitting"
+          >
+            {{
+              isSubmitting
+                ? 'A criar...'
+                : 'Criar sócio'
+            }}
+          </button>
+        </div>
+      </form>
+    </div>
   </UContainer>
 </template>

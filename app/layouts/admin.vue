@@ -93,10 +93,6 @@ const handleLogout = async () => {
           </UContainer>
         </header>
 
-        <UContainer class="pt-6">
-          <SharedMockDataNotice />
-        </UContainer>
-
         <main>
           <slot />
         </main>

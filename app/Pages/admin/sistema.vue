@@ -75,8 +75,7 @@ const hasSupabaseAnonKey = computed(() => {
       </p>
 
       <p class="mt-3 leading-7 text-gray-700">
-        Só depois disso faz sentido começar a migrar sócios, eventos, quotas e publicações
-        do localStorage para a base de dados.
+        Os dados da plataforma são armazenados e geridos através do Supabase.
       </p>
     </div>
   </UContainer>
