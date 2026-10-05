@@ -4,8 +4,9 @@ import {
   useSupabaseAdminMembers,
   type AdminMember,
   type AdminMemberStatus,
-  type AdminQuotaStatus
 } from '~/composables/useSupabaseAdminMembers'
+
+import type { AdminQuotaStatus } from '~/composables/useSupabaseAdminQuotas'
 
 definePageMeta({
   layout: 'admin'

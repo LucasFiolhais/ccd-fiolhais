@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { useMemberSession } from '~/composables/useMemberSession'
+import { useSupabaseMemberAuth } from '~/composables/useSupabaseMemberAuth'
 
-const { currentMember, logout } = useMemberSession()
+const {
+  member,
+  loadMemberUser,
+  signOutMember
+} = useSupabaseMemberAuth()
 
 const links = [
   {
@@ -19,9 +23,14 @@ const links = [
 ]
 
 const handleLogout = async () => {
-  logout()
-  await navigateTo('/area-socio')
+  await signOutMember()
+
+  await navigateTo('/socios/login')
 }
+
+onMounted(async () => {
+  await loadMemberUser()
+})
 </script>
 
 <template>
@@ -29,15 +38,18 @@ const handleLogout = async () => {
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <p class="text-sm text-gray-500">
-          Sessão mockada
+          Área do Sócio
         </p>
 
         <p class="font-semibold text-gray-950">
-          {{ currentMember?.fullName }}
+          {{ member?.fullName || 'Sócio' }}
         </p>
 
-        <p class="text-sm text-gray-500">
-          Sócio nº {{ currentMember?.number }}
+        <p
+          v-if="member?.number"
+          class="text-sm text-gray-500"
+        >
+          Sócio nº {{ member.number }}
         </p>
       </div>
 

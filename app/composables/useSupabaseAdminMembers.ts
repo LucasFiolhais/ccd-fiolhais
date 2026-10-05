@@ -1,5 +1,6 @@
+import type { AdminQuotaStatus } from '~/composables/useSupabaseAdminQuotas'
+
 export type AdminMemberStatus = 'pending' | 'active' | 'inactive'
-export type AdminQuotaStatus = 'pending' | 'paid' | 'overdue' | 'exempt'
 
 export interface AdminMemberQuota {
   id: string
@@ -36,6 +37,16 @@ export interface UpdateAdminMemberInput {
   notes?: string
 }
 
+export interface CreateAdminMemberInput {
+  fullName: string
+  email: string
+  phone: string
+  address: string
+  birthDate?: string
+  status: AdminMemberStatus
+  notes?: string
+}
+
 interface SupabaseMemberQuotaRow {
   id: string
   year: number
@@ -67,7 +78,9 @@ const getTodayDate = () => {
   return new Date().toISOString().slice(0, 10)
 }
 
-const mapQuota = (quota: SupabaseMemberQuotaRow): AdminMemberQuota => {
+const mapQuota = (
+  quota: SupabaseMemberQuotaRow
+): AdminMemberQuota => {
   return {
     id: quota.id,
     year: quota.year,
@@ -100,7 +113,9 @@ const mapMember = (
     status: member.status,
     notes: member.notes || undefined,
     quotas,
-    currentQuota: quotas.find((quota) => quota.year === currentYear)
+    currentQuota: quotas.find((quota) => {
+      return quota.year === currentYear
+    })
   }
 }
 
@@ -156,12 +171,17 @@ export const useSupabaseAdminMembers = () => {
       success: true,
       error: null,
       members: (data || []).map((member) => {
-        return mapMember(member as SupabaseMemberRow, currentYear)
+        return mapMember(
+          member as SupabaseMemberRow,
+          currentYear
+        )
       })
     }
   }
 
-  const getMemberByNumber = async (memberNumber: string) => {
+  const getMemberByNumber = async (
+    memberNumber: string
+  ) => {
     const supabase = useSupabaseClient()
 
     if (!supabase) {
@@ -218,7 +238,114 @@ export const useSupabaseAdminMembers = () => {
     return {
       success: true,
       error: null,
-      member: mapMember(data as SupabaseMemberRow, currentYear)
+      member: mapMember(
+        data as SupabaseMemberRow,
+        currentYear
+      )
+    }
+  }
+
+  const createMember = async (
+    input: CreateAdminMemberInput
+  ) => {
+    const supabase = useSupabaseClient()
+
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase ainda não está configurado.',
+        member: null
+      }
+    }
+
+    /*
+     * Procuro os números de sócio existentes
+     * para calcular o próximo número disponível.
+     */
+    const {
+      data: existingMembers,
+      error: numbersError
+    } = await supabase
+      .from('members')
+      .select('number')
+
+    if (numbersError) {
+      return {
+        success: false,
+        error: numbersError.message,
+        member: null
+      }
+    }
+
+    const memberNumbers = (existingMembers || [])
+      .map((member) => {
+        return Number.parseInt(
+          String(member.number),
+          10
+        )
+      })
+      .filter((number) => {
+        return Number.isFinite(number)
+      })
+
+    const highestNumber = memberNumbers.length
+      ? Math.max(...memberNumbers)
+      : 0
+
+    const nextNumber = String(
+      highestNumber + 1
+    ).padStart(3, '0')
+
+    const {
+      error: insertError
+    } = await supabase
+      .from('members')
+      .insert({
+        user_id: null,
+        number: nextNumber,
+        full_name: input.fullName.trim(),
+        email: input.email.trim(),
+        phone: input.phone.trim(),
+        address: input.address.trim(),
+        birth_date: input.birthDate || null,
+        joined_at: getTodayDate(),
+        status: input.status,
+        notes: input.notes?.trim() || null
+      })
+
+    if (insertError) {
+      return {
+        success: false,
+        error: insertError.message,
+        member: null
+      }
+    }
+
+    /*
+     * Depois do INSERT volto a carregar o sócio
+     * para devolver o mesmo formato usado pelo
+     * restante backoffice.
+     */
+    const memberResult =
+      await getMemberByNumber(nextNumber)
+
+    if (
+      !memberResult.success ||
+      !memberResult.member
+    ) {
+      return {
+        success: false,
+        error:
+          memberResult.error ||
+          'O sócio foi criado, mas não foi possível carregá-lo.',
+        member: null
+      }
+    }
+
+    return {
+      success: true,
+      error: null,
+      member: memberResult.member
     }
   }
 
@@ -312,7 +439,10 @@ export const useSupabaseAdminMembers = () => {
       .from('member_quotas')
       .update({
         status,
-        paid_at: status === 'paid' ? getTodayDate() : null
+        paid_at:
+          status === 'paid'
+            ? getTodayDate()
+            : null
       })
       .eq('id', quotaId)
 
@@ -329,7 +459,9 @@ export const useSupabaseAdminMembers = () => {
     }
   }
 
-  const createCurrentYearQuota = async (memberId: string) => {
+  const createCurrentYearQuota = async (
+    memberId: string
+  ) => {
     const supabase = useSupabaseClient()
 
     if (!supabase) {
@@ -364,6 +496,7 @@ export const useSupabaseAdminMembers = () => {
   return {
     getMembers,
     getMemberByNumber,
+    createMember,
     updateMember,
     updateMemberStatus,
     updateQuotaStatus,
