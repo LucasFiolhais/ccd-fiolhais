@@ -14,6 +14,8 @@ export default defineNuxtConfig({
   ],
 
   runtimeConfig: {
+    supabaseServiceRoleKey: '',
+
     public: {
       siteName: 'CCD Fiolhais',
       siteUrl: 'http://localhost:3000',

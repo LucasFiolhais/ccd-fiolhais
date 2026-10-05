@@ -19,9 +19,11 @@ const {
   createCurrentYearQuota
 } = useSupabaseAdminMembers()
 
-const currentYear = new Date().getFullYear()
 const member = ref<AdminMember | null>(null)
+
 const isLoading = ref(true)
+const isSubmitting = ref(false)
+
 const submitError = ref('')
 const successMessage = ref('')
 
@@ -29,13 +31,19 @@ const memberNumber = computed(() => {
   return String(route.params.number)
 })
 
+const currentYear = new Date().getFullYear()
+
 useHead(() => {
   return {
-    title: member.value ? `Sócio ${member.value.number}` : 'Sócio'
+    title: member.value
+      ? `Sócio ${member.value.number}`
+      : 'Sócio'
   }
 })
 
-const getStatusLabel = (status: AdminMemberStatus) => {
+const getMemberStatusLabel = (
+  status: AdminMemberStatus
+) => {
   if (status === 'active') {
     return 'Ativo'
   }
@@ -47,7 +55,9 @@ const getStatusLabel = (status: AdminMemberStatus) => {
   return 'Inativo'
 }
 
-const getStatusClass = (status: AdminMemberStatus) => {
+const getMemberStatusClass = (
+  status: AdminMemberStatus
+) => {
   if (status === 'active') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700'
   }
@@ -59,7 +69,9 @@ const getStatusClass = (status: AdminMemberStatus) => {
   return 'border-gray-200 bg-gray-50 text-gray-600'
 }
 
-const getQuotaLabel = (status: AdminQuotaStatus) => {
+const getQuotaStatusLabel = (
+  status: AdminQuotaStatus
+) => {
   if (status === 'paid') {
     return 'Paga'
   }
@@ -75,7 +87,9 @@ const getQuotaLabel = (status: AdminQuotaStatus) => {
   return 'Isenta'
 }
 
-const getQuotaClass = (status: AdminQuotaStatus) => {
+const getQuotaStatusClass = (
+  status: AdminQuotaStatus
+) => {
   if (status === 'paid') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700'
   }
@@ -96,9 +110,13 @@ const formatDate = (value?: string) => {
     return 'Não indicada'
   }
 
+  const date = value.includes('T')
+    ? new Date(value)
+    : new Date(`${value}T00:00:00`)
+
   return new Intl.DateTimeFormat('pt-PT', {
-    dateStyle: 'short'
-  }).format(new Date(`${value}T00:00:00`))
+    dateStyle: 'long'
+  }).format(date)
 }
 
 const formatMoney = (value: number) => {
@@ -108,21 +126,26 @@ const formatMoney = (value: number) => {
   }).format(value)
 }
 
-const paidQuotas = computed(() => {
-  if (!member.value) {
-    return 0
-  }
-
-  return member.value.quotas.filter((quota) => quota.status === 'paid').length
-})
-
-const pendingQuotas = computed(() => {
+const paidQuotasCount = computed(() => {
   if (!member.value) {
     return 0
   }
 
   return member.value.quotas.filter((quota) => {
-    return quota.status === 'pending' || quota.status === 'overdue'
+    return quota.status === 'paid'
+  }).length
+})
+
+const pendingOrOverdueQuotasCount = computed(() => {
+  if (!member.value) {
+    return 0
+  }
+
+  return member.value.quotas.filter((quota) => {
+    return (
+      quota.status === 'pending' ||
+      quota.status === 'overdue'
+    )
   }).length
 })
 
@@ -132,7 +155,9 @@ const totalPaidAmount = computed(() => {
   }
 
   return member.value.quotas
-    .filter((quota) => quota.status === 'paid')
+    .filter((quota) => {
+      return quota.status === 'paid'
+    })
     .reduce((total, quota) => {
       return total + quota.amount
     }, 0)
@@ -143,12 +168,20 @@ const loadMember = async () => {
   submitError.value = ''
   successMessage.value = ''
 
-  const result = await getMemberByNumber(memberNumber.value)
+  const result =
+    await getMemberByNumber(
+      memberNumber.value
+    )
 
   isLoading.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível carregar o sócio.'
+    submitError.value =
+      result.error ||
+      'Não foi possível carregar o sócio.'
+
+    member.value = null
+
     return
   }
 
@@ -159,41 +192,66 @@ const handleReload = async () => {
   await loadMember()
 }
 
-const handleActivateMember = async () => {
+const handleMemberStatus = async (
+  status: AdminMemberStatus
+) => {
   if (!member.value) {
     return
   }
 
+  isSubmitting.value = true
   submitError.value = ''
   successMessage.value = ''
 
-  const result = await updateMemberStatus(member.value.id, 'active')
+  const result =
+    await updateMemberStatus(
+      member.value.id,
+      status
+    )
+
+  isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível ativar o sócio.'
+    submitError.value =
+      result.error ||
+      'Não foi possível atualizar o estado do sócio.'
+
     return
   }
 
-  successMessage.value = 'Sócio ativado com sucesso.'
+  successMessage.value =
+    'Estado do sócio atualizado com sucesso.'
+
   await loadMember()
 }
 
-const handleDeactivateMember = async () => {
-  if (!member.value) {
-    return
-  }
-
+const handleQuotaStatus = async (
+  quotaId: string,
+  status: AdminQuotaStatus
+) => {
+  isSubmitting.value = true
   submitError.value = ''
   successMessage.value = ''
 
-  const result = await updateMemberStatus(member.value.id, 'inactive')
+  const result =
+    await updateQuotaStatus(
+      quotaId,
+      status
+    )
+
+  isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível desativar o sócio.'
+    submitError.value =
+      result.error ||
+      'Não foi possível atualizar a quota.'
+
     return
   }
 
-  successMessage.value = 'Sócio desativado com sucesso.'
+  successMessage.value =
+    'Estado da quota atualizado com sucesso.'
+
   await loadMember()
 }
 
@@ -202,35 +260,28 @@ const handleCreateCurrentQuota = async () => {
     return
   }
 
+  isSubmitting.value = true
   submitError.value = ''
   successMessage.value = ''
 
-  const result = await createCurrentYearQuota(member.value.id)
+  const result =
+    await createCurrentYearQuota(
+      member.value.id
+    )
+
+  isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível criar a quota do ano atual.'
+    submitError.value =
+      result.error ||
+      'Não foi possível criar a quota.'
+
     return
   }
 
-  successMessage.value = `Quota de ${currentYear} criada com sucesso.`
-  await loadMember()
-}
+  successMessage.value =
+    `Quota de ${currentYear} criada com sucesso.`
 
-const handleUpdateQuotaStatus = async (
-  quotaId: string,
-  status: AdminQuotaStatus
-) => {
-  submitError.value = ''
-  successMessage.value = ''
-
-  const result = await updateQuotaStatus(quotaId, status)
-
-  if (!result.success) {
-    submitError.value = result.error || 'Não foi possível atualizar a quota.'
-    return
-  }
-
-  successMessage.value = 'Quota atualizada com sucesso.'
   await loadMember()
 }
 
@@ -252,13 +303,13 @@ onMounted(async () => {
 
     <div
       v-if="isLoading"
-      class="rounded-3xl border border-amber-200 bg-white p-8 text-center text-gray-600 shadow-sm"
+      class="rounded-3xl border border-amber-200 bg-white p-10 text-center text-gray-600 shadow-sm"
     >
-      A carregar dados do sócio...
+      A carregar sócio...
     </div>
 
     <div
-      v-else-if="submitError"
+      v-else-if="submitError && !member"
       class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
     >
       <p class="font-bold">
@@ -274,7 +325,8 @@ onMounted(async () => {
       v-else-if="member"
       class="space-y-8"
     >
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <!-- Cabeçalho -->
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
             Sócio nº {{ member.number }}
@@ -284,27 +336,12 @@ onMounted(async () => {
             {{ member.fullName }}
           </h1>
 
-          <div class="mt-4 flex flex-wrap gap-3">
+          <div class="mt-4">
             <span
               class="rounded-full border px-3 py-1 text-xs font-bold"
-              :class="getStatusClass(member.status)"
+              :class="getMemberStatusClass(member.status)"
             >
-              {{ getStatusLabel(member.status) }}
-            </span>
-
-            <span
-              v-if="member.currentQuota"
-              class="rounded-full border px-3 py-1 text-xs font-bold"
-              :class="getQuotaClass(member.currentQuota.status)"
-            >
-              Quota {{ currentYear }}: {{ getQuotaLabel(member.currentQuota.status) }}
-            </span>
-
-            <span
-              v-else
-              class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-600"
-            >
-              Sem quota {{ currentYear }}
+              {{ getMemberStatusLabel(member.status) }}
             </span>
           </div>
         </div>
@@ -319,30 +356,46 @@ onMounted(async () => {
           </button>
 
           <NuxtLink
-  :to="`/admin/socios/${member.number}/editar`"
-  class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
->
-  Editar dados
-</NuxtLink>
+            :to="`/admin/socios/${member.number}/editar`"
+            class="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+          >
+            Editar dados
+          </NuxtLink>
 
           <button
             v-if="member.status !== 'active'"
             type="button"
-            class="rounded-xl border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-            @click="handleActivateMember"
+            class="rounded-xl border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isSubmitting"
+            @click="handleMemberStatus('active')"
           >
             Ativar sócio
           </button>
 
           <button
-            v-if="member.status !== 'inactive'"
+            v-if="member.status === 'active'"
             type="button"
-            class="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            @click="handleDeactivateMember"
+            class="rounded-xl border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isSubmitting"
+            @click="handleMemberStatus('inactive')"
           >
             Desativar sócio
           </button>
         </div>
+      </div>
+
+      <!-- Mensagens -->
+      <div
+        v-if="submitError"
+        class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900"
+      >
+        <p class="font-bold">
+          Erro
+        </p>
+
+        <p class="mt-2">
+          {{ submitError }}
+        </p>
       </div>
 
       <div
@@ -358,300 +411,361 @@ onMounted(async () => {
         </p>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
+      <!-- Estatísticas -->
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
-          label="Quotas pagas"
-          :value="paidQuotas"
+          label="Quotas registadas"
+          :value="member.quotas.length"
           description="Total no histórico"
         />
 
         <AdminStatCard
-          label="Quotas pendentes"
-          :value="pendingQuotas"
-          description="Pendentes ou em atraso"
+          label="Quotas pagas"
+          :value="paidQuotasCount"
+          description="Pagamentos registados"
+        />
+
+        <AdminStatCard
+          label="Pendentes / atraso"
+          :value="pendingOrOverdueQuotasCount"
+          description="Requerem atenção"
         />
 
         <AdminStatCard
           label="Total pago"
           :value="formatMoney(totalPaidAmount)"
-          description="Valor registado"
+          description="Histórico registado"
         />
       </div>
 
-      <div class="grid gap-8 xl:grid-cols-[1fr_1.2fr]">
-        <div class="space-y-8">
-          <div class="rounded-3xl border border-amber-200 bg-white shadow-sm">
-            <div class="border-b border-gray-200 p-6">
-              <h2 class="text-2xl font-bold text-gray-950">
-                Dados pessoais
-              </h2>
-            </div>
+      <!-- Dados do sócio -->
+      <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 p-6">
+          <h2 class="text-2xl font-bold text-gray-950">
+            Dados do sócio
+          </h2>
 
-            <div class="space-y-5 p-6">
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Nome
-                </p>
+          <p class="mt-2 text-gray-600">
+            Informação pessoal e administrativa registada no Supabase.
+          </p>
+        </div>
 
-                <p class="mt-1 text-gray-950">
-                  {{ member.fullName }}
-                </p>
-              </div>
+        <div class="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-3">
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Número
+            </p>
 
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Email
-                </p>
-
-                <p class="mt-1 break-all text-gray-950">
-                  {{ member.email }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Telefone
-                </p>
-
-                <p class="mt-1 text-gray-950">
-                  {{ member.phone }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Morada
-                </p>
-
-                <p class="mt-1 whitespace-pre-line text-gray-950">
-                  {{ member.address }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Data de nascimento
-                </p>
-
-                <p class="mt-1 text-gray-950">
-                  {{ formatDate(member.birthDate) }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-sm font-semibold text-gray-500">
-                  Data de inscrição
-                </p>
-
-                <p class="mt-1 text-gray-950">
-                  {{ formatDate(member.joinedAt) }}
-                </p>
-              </div>
-
-              <div v-if="member.notes">
-                <p class="text-sm font-semibold text-gray-500">
-                  Observações
-                </p>
-
-                <p class="mt-1 whitespace-pre-line text-gray-950">
-                  {{ member.notes }}
-                </p>
-              </div>
-
-              <div class="flex flex-wrap gap-4 pt-2">
-                <a
-                  :href="`mailto:${member.email}`"
-                  class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
-                >
-                  Enviar email
-                </a>
-
-                <a
-                  :href="`tel:${member.phone}`"
-                  class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
-                >
-                  Contactar por telefone
-                </a>
-              </div>
-            </div>
+            <p class="mt-1 text-gray-950">
+              {{ member.number }}
+            </p>
           </div>
 
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
-            <h2 class="text-2xl font-bold text-gray-950">
-              Quota do ano atual
-            </h2>
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Nome
+            </p>
 
-            <div
-              v-if="member.currentQuota"
-              class="mt-5 rounded-2xl bg-gray-50 p-5"
+            <p class="mt-1 text-gray-950">
+              {{ member.fullName }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Estado
+            </p>
+
+            <p class="mt-1 text-gray-950">
+              {{ getMemberStatusLabel(member.status) }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Email
+            </p>
+
+            <p class="mt-1 break-all text-gray-950">
+              {{ member.email }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Telefone
+            </p>
+
+            <p class="mt-1 text-gray-950">
+              {{ member.phone }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Data de nascimento
+            </p>
+
+            <p class="mt-1 text-gray-950">
+              {{ formatDate(member.birthDate) }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4">
+            <p class="text-sm font-semibold text-gray-500">
+              Sócio desde
+            </p>
+
+            <p class="mt-1 text-gray-950">
+              {{ formatDate(member.joinedAt) }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 p-4 md:col-span-2">
+            <p class="text-sm font-semibold text-gray-500">
+              Morada
+            </p>
+
+            <p class="mt-1 whitespace-pre-line text-gray-950">
+              {{ member.address }}
+            </p>
+          </div>
+
+          <div
+            v-if="member.notes"
+            class="rounded-2xl bg-gray-50 p-4 md:col-span-2 xl:col-span-3"
+          >
+            <p class="text-sm font-semibold text-gray-500">
+              Observações
+            </p>
+
+            <p class="mt-1 whitespace-pre-line text-gray-950">
+              {{ member.notes }}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- NOVO: Conta da Área do Sócio -->
+      <AdminMemberAccountCard
+        :member-id="member.id"
+        :user-id="member.userId"
+        :email="member.email"
+        :status="member.status"
+        @created="handleReload"
+      />
+
+      <!-- Quota do ano atual -->
+      <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 p-6">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-950">
+                Quota {{ currentYear }}
+              </h2>
+
+              <p class="mt-2 text-gray-600">
+                Estado da quota correspondente ao ano atual.
+              </p>
+            </div>
+
+            <button
+              v-if="!member.currentQuota"
+              type="button"
+              class="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSubmitting"
+              @click="handleCreateCurrentQuota"
             >
-              <span
-                class="rounded-full border px-3 py-1 text-xs font-bold"
-                :class="getQuotaClass(member.currentQuota.status)"
-              >
-                {{ getQuotaLabel(member.currentQuota.status) }}
-              </span>
+              Criar quota {{ currentYear }}
+            </button>
+          </div>
+        </div>
 
-              <p class="mt-4 text-gray-700">
-                Ano: <strong>{{ member.currentQuota.year }}</strong>
+        <div
+          v-if="member.currentQuota"
+          class="p-6"
+        >
+          <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-3xl font-black text-gray-950">
+                {{ formatMoney(member.currentQuota.amount) }}
               </p>
 
-              <p class="mt-1 text-gray-700">
-                Valor: <strong>{{ formatMoney(member.currentQuota.amount) }}</strong>
-              </p>
+              <div class="mt-3">
+                <span
+                  class="rounded-full border px-3 py-1 text-sm font-bold"
+                  :class="getQuotaStatusClass(member.currentQuota.status)"
+                >
+                  {{ getQuotaStatusLabel(member.currentQuota.status) }}
+                </span>
+              </div>
 
               <p
                 v-if="member.currentQuota.paidAt"
-                class="mt-1 text-gray-700"
+                class="mt-3 text-sm text-gray-500"
               >
-                Paga em: <strong>{{ formatDate(member.currentQuota.paidAt) }}</strong>
+                Pagamento registado em
+                {{ formatDate(member.currentQuota.paidAt) }}
               </p>
-
-              <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                  @click="handleUpdateQuotaStatus(member.currentQuota.id, 'paid')"
-                >
-                  Marcar paga
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
-                  @click="handleUpdateQuotaStatus(member.currentQuota.id, 'pending')"
-                >
-                  Marcar pendente
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-                  @click="handleUpdateQuotaStatus(member.currentQuota.id, 'overdue')"
-                >
-                  Marcar em atraso
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-sky-300 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
-                  @click="handleUpdateQuotaStatus(member.currentQuota.id, 'exempt')"
-                >
-                  Marcar isenta
-                </button>
-              </div>
             </div>
 
-            <div
-              v-else
-              class="mt-5 rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-5 text-amber-950"
-            >
-              <p class="font-semibold">
-                Este sócio ainda não tem quota para {{ currentYear }}.
-              </p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-if="member.currentQuota.status !== 'paid'"
+                type="button"
+                class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="handleQuotaStatus(member.currentQuota.id, 'paid')"
+              >
+                Marcar paga
+              </button>
 
               <button
+                v-if="member.currentQuota.status !== 'pending'"
                 type="button"
-                class="mt-4 rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-400"
-                @click="handleCreateCurrentQuota"
+                class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="handleQuotaStatus(member.currentQuota.id, 'pending')"
               >
-                Criar quota {{ currentYear }}
+                Pendente
+              </button>
+
+              <button
+                v-if="member.currentQuota.status !== 'overdue'"
+                type="button"
+                class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="handleQuotaStatus(member.currentQuota.id, 'overdue')"
+              >
+                Em atraso
+              </button>
+
+              <button
+                v-if="member.currentQuota.status !== 'exempt'"
+                type="button"
+                class="rounded-xl border border-sky-300 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="handleQuotaStatus(member.currentQuota.id, 'exempt')"
+              >
+                Isenta
               </button>
             </div>
           </div>
         </div>
 
-        <div class="rounded-3xl border border-amber-200 bg-white shadow-sm">
-          <div class="border-b border-gray-200 p-6">
-            <h2 class="text-2xl font-bold text-gray-950">
-              Histórico de quotas
-            </h2>
-
-            <p class="mt-2 text-gray-600">
-              Consulta todas as quotas associadas a este sócio.
-            </p>
-          </div>
-
-          <div
-            v-if="member.quotas.length"
-            class="divide-y divide-gray-200"
-          >
-            <article
-              v-for="quota in member.quotas"
-              :key="quota.id"
-              class="p-6"
-            >
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h3 class="text-xl font-bold text-gray-950">
-                    Quota {{ quota.year }}
-                  </h3>
-
-                  <p class="mt-2 text-gray-600">
-                    Valor: {{ formatMoney(quota.amount) }}
-                  </p>
-
-                  <p
-                    v-if="quota.paidAt"
-                    class="mt-1 text-gray-600"
-                  >
-                    Paga em {{ formatDate(quota.paidAt) }}
-                  </p>
-                </div>
-
-                <span
-                  class="w-fit rounded-full border px-3 py-1 text-xs font-bold"
-                  :class="getQuotaClass(quota.status)"
-                >
-                  {{ getQuotaLabel(quota.status) }}
-                </span>
-              </div>
-
-              <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                  @click="handleUpdateQuotaStatus(quota.id, 'paid')"
-                >
-                  Paga
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
-                  @click="handleUpdateQuotaStatus(quota.id, 'pending')"
-                >
-                  Pendente
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-                  @click="handleUpdateQuotaStatus(quota.id, 'overdue')"
-                >
-                  Em atraso
-                </button>
-
-                <button
-                  type="button"
-                  class="rounded-xl border border-sky-300 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
-                  @click="handleUpdateQuotaStatus(quota.id, 'exempt')"
-                >
-                  Isenta
-                </button>
-              </div>
-            </article>
-          </div>
-
+        <div
+          v-else
+          class="p-6"
+        >
           <SharedEmptyState
-            v-else
-            class="m-6"
             icon="💶"
-            title="Sem quotas registadas"
-            description="Este sócio ainda não tem quotas associadas."
+            title="Quota ainda não criada"
+            :description="`Este sócio ainda não tem uma quota registada para ${currentYear}.`"
           />
         </div>
-      </div>
+      </section>
+
+      <!-- Histórico -->
+      <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 p-6">
+          <h2 class="text-2xl font-bold text-gray-950">
+            Histórico de quotas
+          </h2>
+
+          <p class="mt-2 text-gray-600">
+            Todas as quotas associadas a este sócio.
+          </p>
+        </div>
+
+        <div
+          v-if="member.quotas.length"
+          class="divide-y divide-gray-200"
+        >
+          <article
+            v-for="quota in member.quotas"
+            :key="quota.id"
+            class="p-6"
+          >
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-xl font-bold text-gray-950">
+                  {{ quota.year }}
+                </p>
+
+                <p class="mt-1 text-gray-600">
+                  {{ formatMoney(quota.amount) }}
+                </p>
+
+                <p
+                  v-if="quota.paidAt"
+                  class="mt-2 text-sm text-gray-500"
+                >
+                  Pago em {{ formatDate(quota.paidAt) }}
+                </p>
+              </div>
+
+              <div class="flex flex-col gap-3 lg:items-end">
+                <span
+                  class="self-start rounded-full border px-3 py-1 text-sm font-bold lg:self-auto"
+                  :class="getQuotaStatusClass(quota.status)"
+                >
+                  {{ getQuotaStatusLabel(quota.status) }}
+                </span>
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-if="quota.status !== 'paid'"
+                    type="button"
+                    class="rounded-xl border border-emerald-300 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60"
+                    :disabled="isSubmitting"
+                    @click="handleQuotaStatus(quota.id, 'paid')"
+                  >
+                    Paga
+                  </button>
+
+                  <button
+                    v-if="quota.status !== 'pending'"
+                    type="button"
+                    class="rounded-xl border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
+                    :disabled="isSubmitting"
+                    @click="handleQuotaStatus(quota.id, 'pending')"
+                  >
+                    Pendente
+                  </button>
+
+                  <button
+                    v-if="quota.status !== 'overdue'"
+                    type="button"
+                    class="rounded-xl border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+                    :disabled="isSubmitting"
+                    @click="handleQuotaStatus(quota.id, 'overdue')"
+                  >
+                    Em atraso
+                  </button>
+
+                  <button
+                    v-if="quota.status !== 'exempt'"
+                    type="button"
+                    class="rounded-xl border border-sky-300 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-50 disabled:opacity-60"
+                    :disabled="isSubmitting"
+                    @click="handleQuotaStatus(quota.id, 'exempt')"
+                  >
+                    Isenta
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <SharedEmptyState
+          v-else
+          class="m-6"
+          icon="💶"
+          title="Sem histórico de quotas"
+          description="Ainda não existem quotas associadas a este sócio."
+        />
+      </section>
     </div>
 
     <SharedEmptyState

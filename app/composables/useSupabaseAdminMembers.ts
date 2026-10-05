@@ -11,6 +11,7 @@ export interface AdminMemberQuota {
 
 export interface AdminMember {
   id: string
+  userId?: string
   number: string
   fullName: string
   email: string
@@ -45,6 +46,7 @@ interface SupabaseMemberQuotaRow {
 
 interface SupabaseMemberRow {
   id: string
+  user_id: string | null
   number: string
   full_name: string
   email: string
@@ -87,6 +89,7 @@ const mapMember = (
 
   return {
     id: member.id,
+    userId: member.user_id || undefined,
     number: member.number,
     fullName: member.full_name,
     email: member.email,
@@ -119,6 +122,7 @@ export const useSupabaseAdminMembers = () => {
       .from('members')
       .select(`
         id,
+        user_id,
         number,
         full_name,
         email,
@@ -174,6 +178,7 @@ export const useSupabaseAdminMembers = () => {
       .from('members')
       .select(`
         id,
+        user_id,
         number,
         full_name,
         email,
