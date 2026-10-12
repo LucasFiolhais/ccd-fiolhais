@@ -390,3 +390,104 @@ for all
 to authenticated
 using (public.is_admin())
 with check (public.is_admin());
+
+
+create or replace function public.create_admin_member(
+  p_full_name text,
+  p_email text,
+  p_phone text,
+  p_address text,
+  p_birth_date date,
+  p_status public.member_status,
+  p_notes text
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  next_number integer;
+  member_number text;
+begin
+  if not public.is_admin() then
+    raise exception 'Sem autorização para criar sócios.';
+  end if;
+
+  /*
+   * Impede duas operações de calcularem o número
+   * seguinte ao mesmo tempo.
+   */
+  perform pg_advisory_xact_lock(
+    hashtext('ccd-member-number-generation')
+  );
+
+  select
+    coalesce(
+      max(
+        case
+          when number ~ '^[0-9]+$'
+            then number::integer
+          else null
+        end
+      ),
+      0
+    ) + 1
+  into next_number
+  from public.members;
+
+  member_number :=
+    lpad(next_number::text, 3, '0');
+
+  insert into public.members (
+    user_id,
+    number,
+    full_name,
+    email,
+    phone,
+    address,
+    birth_date,
+    joined_at,
+    status,
+    notes
+  )
+  values (
+    null,
+    member_number,
+    trim(p_full_name),
+    trim(p_email),
+    trim(p_phone),
+    trim(p_address),
+    p_birth_date,
+    current_date,
+    p_status,
+    nullif(trim(p_notes), '')
+  );
+
+  return member_number;
+end;
+$$;
+
+revoke all
+on function public.create_admin_member(
+  text,
+  text,
+  text,
+  text,
+  date,
+  public.member_status,
+  text
+)
+from public;
+
+grant execute
+on function public.create_admin_member(
+  text,
+  text,
+  text,
+  text,
+  date,
+  public.member_status,
+  text
+)
+to authenticated;
