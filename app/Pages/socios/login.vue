@@ -142,6 +142,15 @@ onMounted(async () => {
               >
             </div>
 
+            <div class="text-right">
+              <NuxtLink
+                to="/socios/recuperar-password"
+                class="text-sm font-semibold text-amber-700 hover:text-amber-600"
+              >
+                Esqueci-me da palavra-passe
+              </NuxtLink>
+            </div>
+
             <button
               type="submit"
               class="w-full rounded-xl bg-amber-500 px-5 py-3 font-bold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
