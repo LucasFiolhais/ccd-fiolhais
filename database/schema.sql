@@ -491,3 +491,49 @@ on function public.create_admin_member(
   text
 )
 to authenticated;
+
+create or replace function public.update_my_member_contact(
+  p_phone text,
+  p_address text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid;
+begin
+  current_user_id := auth.uid();
+
+  if current_user_id is null then
+    raise exception 'Não existe uma sessão autenticada.';
+  end if;
+
+  if nullif(trim(p_phone), '') is null then
+    raise exception 'O telefone é obrigatório.';
+  end if;
+
+  if nullif(trim(p_address), '') is null then
+    raise exception 'A morada é obrigatória.';
+  end if;
+
+  update public.members
+  set
+    phone = trim(p_phone),
+    address = trim(p_address)
+  where user_id = current_user_id;
+
+  if not found then
+    raise exception 'Não existe nenhum sócio associado a esta conta.';
+  end if;
+end;
+$$;
+
+revoke all
+on function public.update_my_member_contact(text, text)
+from public;
+
+grant execute
+on function public.update_my_member_contact(text, text)
+to authenticated;

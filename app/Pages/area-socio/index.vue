@@ -14,7 +14,8 @@ const {
 } = useSupabaseMemberAuth()
 
 const {
-  getMyMemberData
+  getMyMemberData,
+  updateMyContactData
 } = useSupabaseMemberArea()
 
 useHead({
@@ -22,8 +23,20 @@ useHead({
 })
 
 const member = ref<MemberAreaData | null>(null)
+
 const isLoading = ref(true)
 const loadError = ref('')
+
+const isEditing = ref(false)
+const isSaving = ref(false)
+
+const saveError = ref('')
+const saveSuccess = ref('')
+
+const editForm = reactive({
+  phone: '',
+  address: ''
+})
 
 const currentYear = new Date().getFullYear()
 
@@ -123,6 +136,7 @@ const loadArea = async () => {
 
   if (!isLoggedIn.value) {
     isLoading.value = false
+
     await navigateTo('/socios/login')
     return
   }
@@ -146,6 +160,79 @@ const loadArea = async () => {
   }
 
   member.value = result.member
+}
+
+const startEditing = () => {
+  if (!member.value) {
+    return
+  }
+
+  editForm.phone = member.value.phone
+  editForm.address = member.value.address
+
+  saveError.value = ''
+  saveSuccess.value = ''
+
+  isEditing.value = true
+}
+
+const cancelEditing = () => {
+  isEditing.value = false
+  saveError.value = ''
+
+  if (member.value) {
+    editForm.phone = member.value.phone
+    editForm.address = member.value.address
+  }
+}
+
+const saveContactData = async () => {
+  saveError.value = ''
+  saveSuccess.value = ''
+
+  if (!editForm.phone.trim()) {
+    saveError.value =
+      'Introduz o teu telefone.'
+
+    return
+  }
+
+  if (!editForm.address.trim()) {
+    saveError.value =
+      'Introduz a tua morada.'
+
+    return
+  }
+
+  isSaving.value = true
+
+  const result = await updateMyContactData({
+    phone: editForm.phone,
+    address: editForm.address
+  })
+
+  isSaving.value = false
+
+  if (!result.success) {
+    saveError.value =
+      result.error ||
+      'Não foi possível atualizar os teus dados.'
+
+    return
+  }
+
+  if (member.value) {
+    member.value.phone =
+      editForm.phone.trim()
+
+    member.value.address =
+      editForm.address.trim()
+  }
+
+  isEditing.value = false
+
+  saveSuccess.value =
+    'Os teus dados foram atualizados com sucesso.'
 }
 
 const handleLogout = async () => {
@@ -185,7 +272,9 @@ onMounted(async () => {
         v-else-if="member"
         class="space-y-8"
       >
-        <header class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <header
+          class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
+        >
           <div>
             <p class="text-sm font-bold uppercase tracking-[0.18em] text-amber-600">
               Área do Sócio
@@ -270,7 +359,9 @@ onMounted(async () => {
         </nav>
 
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Número de sócio
             </p>
@@ -280,7 +371,9 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Quotas pagas
             </p>
@@ -290,7 +383,9 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Quota {{ currentYear }}
             </p>
@@ -316,18 +411,62 @@ onMounted(async () => {
           </div>
         </div>
 
-        <section class="rounded-3xl border border-amber-200 bg-white shadow-sm">
-          <div class="border-b border-gray-200 p-6">
-            <h2 class="text-2xl font-bold text-gray-950">
-              Os meus dados
-            </h2>
+        <section
+          class="rounded-3xl border border-amber-200 bg-white shadow-sm"
+        >
+          <div
+            class="flex flex-col gap-4 border-b border-gray-200 p-6 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <h2 class="text-2xl font-bold text-gray-950">
+                Os meus dados
+              </h2>
 
-            <p class="mt-2 text-gray-600">
-              Informação atualmente registada na associação.
+              <p class="mt-2 text-gray-600">
+                Informação atualmente registada na associação.
+              </p>
+            </div>
+
+            <button
+              v-if="!isEditing"
+              type="button"
+              class="rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-amber-50"
+              @click="startEditing"
+            >
+              Editar dados
+            </button>
+          </div>
+
+          <div
+            v-if="saveSuccess"
+            class="mx-6 mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-900"
+          >
+            <p class="font-bold">
+              Dados atualizados
+            </p>
+
+            <p class="mt-1">
+              {{ saveSuccess }}
             </p>
           </div>
 
-          <div class="grid gap-4 p-6 md:grid-cols-2">
+          <div
+            v-if="saveError"
+            class="mx-6 mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900"
+          >
+            <p class="font-bold">
+              Não foi possível guardar
+            </p>
+
+            <p class="mt-1">
+              {{ saveError }}
+            </p>
+          </div>
+
+          <div
+            v-if="!isEditing"
+            class="grid gap-4 p-6 md:grid-cols-2"
+          >
             <div class="rounded-2xl bg-gray-50 p-4">
               <p class="text-sm font-semibold text-gray-500">
                 Nome
@@ -368,7 +507,9 @@ onMounted(async () => {
               </p>
             </div>
 
-            <div class="rounded-2xl bg-gray-50 p-4 md:col-span-2">
+            <div
+              class="rounded-2xl bg-gray-50 p-4 md:col-span-2"
+            >
               <p class="text-sm font-semibold text-gray-500">
                 Morada
               </p>
@@ -398,6 +539,93 @@ onMounted(async () => {
               </p>
             </div>
           </div>
+
+          <form
+            v-else
+            class="space-y-6 p-6"
+            @submit.prevent="saveContactData"
+          >
+            <div class="rounded-2xl bg-gray-50 p-4">
+              <p class="text-sm font-semibold text-gray-500">
+                Nome
+              </p>
+
+              <p class="mt-1 text-gray-950">
+                {{ member.fullName }}
+              </p>
+
+              <p class="mt-2 text-xs text-gray-500">
+                Para alterar o nome, contacta a direção do CCD.
+              </p>
+            </div>
+
+            <div class="rounded-2xl bg-gray-50 p-4">
+              <p class="text-sm font-semibold text-gray-500">
+                Email
+              </p>
+
+              <p class="mt-1 break-all text-gray-950">
+                {{ member.email }}
+              </p>
+
+              <p class="mt-2 text-xs text-gray-500">
+                O email da conta não pode ser alterado nesta página.
+              </p>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Telefone
+              </label>
+
+              <input
+                v-model="editForm.phone"
+                type="tel"
+                autocomplete="tel"
+                placeholder="912 345 678"
+                class="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              >
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-gray-800">
+                Morada
+              </label>
+
+              <textarea
+                v-model="editForm.address"
+                rows="4"
+                autocomplete="street-address"
+                placeholder="Rua, número, localidade e código postal"
+                class="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 outline-none placeholder:text-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              ></textarea>
+            </div>
+
+            <div
+              class="flex flex-col gap-3 sm:flex-row sm:justify-end"
+            >
+              <button
+                type="button"
+                class="rounded-xl border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSaving"
+                @click="cancelEditing"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                class="rounded-xl bg-amber-500 px-5 py-3 font-bold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSaving"
+              >
+                {{
+                  isSaving
+                    ? 'A guardar...'
+                    : 'Guardar alterações'
+                }}
+              </button>
+            </div>
+          </form>
         </section>
       </div>
     </UContainer>
