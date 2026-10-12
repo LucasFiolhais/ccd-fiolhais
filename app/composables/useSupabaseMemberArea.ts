@@ -42,6 +42,11 @@ export interface MemberAreaData {
   currentQuota?: MemberAreaQuota
 }
 
+export interface UpdateMemberContactInput {
+  phone: string
+  address: string
+}
+
 export interface MemberAreaEventRegistration {
   id: string
   eventId: string
@@ -181,7 +186,8 @@ const mapEventRegistration = (
     eventSlug: event?.slug,
     eventTitle:
       event?.title || 'Evento indisponível',
-    eventDate: event?.event_date || undefined,
+    eventDate:
+      event?.event_date || undefined,
     eventDateLabel:
       event?.date_label || 'Data indisponível',
     eventTimeLabel:
@@ -305,7 +311,10 @@ export const useSupabaseMemberArea = () => {
           paid_at
         )
       `)
-      .eq('user_id', userData.user.id)
+      .eq(
+        'user_id',
+        userData.user.id
+      )
       .maybeSingle()
 
     if (error) {
@@ -330,6 +339,61 @@ export const useSupabaseMemberArea = () => {
       member: mapMemberAreaData(
         data as unknown as SupabaseMemberAreaRow
       )
+    }
+  }
+
+  const updateMyContactData = async (
+    input: UpdateMemberContactInput
+  ) => {
+    const supabase = useSupabaseClient()
+
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase ainda não está configurado.'
+      }
+    }
+
+    const phone =
+      input.phone.trim()
+
+    const address =
+      input.address.trim()
+
+    if (!phone) {
+      return {
+        success: false,
+        error: 'O telefone é obrigatório.'
+      }
+    }
+
+    if (!address) {
+      return {
+        success: false,
+        error: 'A morada é obrigatória.'
+      }
+    }
+
+    const {
+      error
+    } = await supabase.rpc(
+      'update_my_member_contact',
+      {
+        p_phone: phone,
+        p_address: address
+      }
+    )
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+
+    return {
+      success: true,
+      error: null
     }
   }
 
@@ -391,9 +455,12 @@ export const useSupabaseMemberArea = () => {
         'member_id',
         memberResult.memberId
       )
-      .order('created_at', {
-        ascending: false
-      })
+      .order(
+        'created_at',
+        {
+          ascending: false
+        }
+      )
 
     if (error) {
       return {
@@ -418,6 +485,7 @@ export const useSupabaseMemberArea = () => {
 
   return {
     getMyMemberData,
+    updateMyContactData,
     getMyEventRegistrations
   }
 }
