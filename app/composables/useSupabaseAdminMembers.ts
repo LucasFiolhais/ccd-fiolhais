@@ -245,109 +245,89 @@ export const useSupabaseAdminMembers = () => {
     }
   }
 
-  const createMember = async (
-    input: CreateAdminMemberInput
-  ) => {
-    const supabase = useSupabaseClient()
+const createMember = async (
+  input: CreateAdminMemberInput
+) => {
+  const supabase = useSupabaseClient()
 
-    if (!supabase) {
-      return {
-        success: false,
-        error: 'Supabase ainda não está configurado.',
-        member: null
-      }
-    }
-
-    /*
-     * Procuro os números de sócio existentes
-     * para calcular o próximo número disponível.
-     */
-    const {
-      data: existingMembers,
-      error: numbersError
-    } = await supabase
-      .from('members')
-      .select('number')
-
-    if (numbersError) {
-      return {
-        success: false,
-        error: numbersError.message,
-        member: null
-      }
-    }
-
-    const memberNumbers = (existingMembers || [])
-      .map((member) => {
-        return Number.parseInt(
-          String(member.number),
-          10
-        )
-      })
-      .filter((number) => {
-        return Number.isFinite(number)
-      })
-
-    const highestNumber = memberNumbers.length
-      ? Math.max(...memberNumbers)
-      : 0
-
-    const nextNumber = String(
-      highestNumber + 1
-    ).padStart(3, '0')
-
-    const {
-      error: insertError
-    } = await supabase
-      .from('members')
-      .insert({
-        user_id: null,
-        number: nextNumber,
-        full_name: input.fullName.trim(),
-        email: input.email.trim(),
-        phone: input.phone.trim(),
-        address: input.address.trim(),
-        birth_date: input.birthDate || null,
-        joined_at: getTodayDate(),
-        status: input.status,
-        notes: input.notes?.trim() || null
-      })
-
-    if (insertError) {
-      return {
-        success: false,
-        error: insertError.message,
-        member: null
-      }
-    }
-
-    /*
-     * Depois do INSERT volto a carregar o sócio
-     * para devolver o mesmo formato usado pelo
-     * restante backoffice.
-     */
-    const memberResult =
-      await getMemberByNumber(nextNumber)
-
-    if (
-      !memberResult.success ||
-      !memberResult.member
-    ) {
-      return {
-        success: false,
-        error:
-          memberResult.error ||
-          'O sócio foi criado, mas não foi possível carregá-lo.',
-        member: null
-      }
-    }
-
+  if (!supabase) {
     return {
-      success: true,
-      error: null,
-      member: memberResult.member
+      success: false,
+      error: 'Supabase ainda não está configurado.',
+      member: null
     }
   }
+
+  const {
+    data: memberNumber,
+    error: createError
+  } = await supabase.rpc(
+    'create_admin_member',
+    {
+      p_full_name:
+        input.fullName.trim(),
+
+      p_email:
+        input.email.trim(),
+
+      p_phone:
+        input.phone.trim(),
+
+      p_address:
+        input.address.trim(),
+
+      p_birth_date:
+        input.birthDate || null,
+
+      p_status:
+        input.status,
+
+      p_notes:
+        input.notes?.trim() || ''
+    }
+  )
+
+  if (createError) {
+    return {
+      success: false,
+      error: createError.message,
+      member: null
+    }
+  }
+
+  if (!memberNumber) {
+    return {
+      success: false,
+      error:
+        'O número do sócio não foi devolvido pela base de dados.',
+      member: null
+    }
+  }
+
+  const memberResult =
+    await getMemberByNumber(
+      String(memberNumber)
+    )
+
+  if (
+    !memberResult.success ||
+    !memberResult.member
+  ) {
+    return {
+      success: false,
+      error:
+        memberResult.error ||
+        'O sócio foi criado, mas não foi possível carregá-lo.',
+      member: null
+    }
+  }
+
+  return {
+    success: true,
+    error: null,
+    member: memberResult.member
+  }
+}
 
   const updateMember = async (
     memberId: string,
