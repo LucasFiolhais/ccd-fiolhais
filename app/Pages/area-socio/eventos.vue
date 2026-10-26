@@ -187,12 +187,8 @@ onMounted(async () => {
             to="/area-socio"
             class="text-sm font-semibold text-amber-700 hover:text-amber-600"
           >
-            ← Voltar à área do sócio
+            ← Área do Sócio
           </NuxtLink>
-
-          <p class="mt-8 text-sm font-bold uppercase tracking-[0.18em] text-amber-600">
-            Área do Sócio
-          </p>
 
           <h1 class="mt-2 text-3xl font-black text-gray-950">
             As minhas inscrições
@@ -203,31 +199,80 @@ onMounted(async () => {
           </p>
         </div>
 
-        <nav class="grid gap-4 sm:grid-cols-3">
+        <nav class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <NuxtLink
             to="/area-socio"
-            class="rounded-2xl border border-gray-200 bg-white p-4 text-center font-semibold text-gray-700"
+            class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
           >
-            👤 Resumo
+            <p class="text-2xl">
+              👤
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Resumo
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Dados do meu perfil
+            </p>
           </NuxtLink>
 
           <NuxtLink
             to="/area-socio/quotas"
-            class="rounded-2xl border border-gray-200 bg-white p-4 text-center font-semibold text-gray-700"
+            class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
           >
-            💶 Quotas
+            <p class="text-2xl">
+              💶
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Quotas
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Consultar pagamentos
+            </p>
           </NuxtLink>
 
           <NuxtLink
             to="/area-socio/eventos"
-            class="rounded-2xl border border-amber-400 bg-amber-50 p-4 text-center font-semibold text-amber-800"
+            class="rounded-2xl border border-amber-400 bg-amber-50 p-5"
           >
-            🎟️ Eventos
+            <p class="text-2xl">
+              🎟️
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Eventos
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              As minhas inscrições
+            </p>
+          </NuxtLink>
+
+          <NuxtLink
+            to="/area-socio/seguranca"
+            class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">
+              🔐
+            </p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Segurança
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Palavra-passe da conta
+            </p>
           </NuxtLink>
         </nav>
 
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Inscrições ativas
             </p>
@@ -237,7 +282,9 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Lugares reservados
             </p>
@@ -247,7 +294,9 @@ onMounted(async () => {
             </p>
           </div>
 
-          <div class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div
+            class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
+          >
             <p class="text-sm font-semibold text-gray-500">
               Pagamentos pendentes
             </p>
@@ -267,9 +316,13 @@ onMounted(async () => {
             :key="registration.id"
             class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
           >
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div
+              class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+            >
               <div>
-                <p class="text-sm font-bold uppercase tracking-wide text-amber-600">
+                <p
+                  class="text-sm font-bold uppercase tracking-wide text-amber-600"
+                >
                   Evento
                 </p>
 
@@ -286,7 +339,9 @@ onMounted(async () => {
               </span>
             </div>
 
-            <div class="mt-5 space-y-3 rounded-2xl bg-gray-50 p-4 text-sm">
+            <div
+              class="mt-5 space-y-3 rounded-2xl bg-gray-50 p-4 text-sm"
+            >
               <p class="text-gray-700">
                 📅 {{ formatEventDate(registration) }}
               </p>
