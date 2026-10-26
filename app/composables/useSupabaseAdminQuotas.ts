@@ -1,5 +1,13 @@
-export type AdminQuotaStatus = 'pending' | 'paid' | 'overdue' | 'exempt'
-export type AdminQuotaMemberStatus = 'pending' | 'active' | 'inactive'
+export type AdminQuotaStatus =
+  | 'pending'
+  | 'paid'
+  | 'overdue'
+  | 'exempt'
+
+export type AdminQuotaMemberStatus =
+  | 'pending'
+  | 'active'
+  | 'inactive'
 
 export interface AdminQuota {
   id: string
@@ -33,7 +41,10 @@ interface SupabaseQuotaMemberRow {
   status: AdminQuotaMemberStatus
 }
 
-type SupabaseRelation<T> = T | T[] | null
+type SupabaseRelation<T> =
+  | T
+  | T[]
+  | null
 
 interface SupabaseQuotaRow {
   id: string
@@ -52,17 +63,23 @@ interface SupabaseMemberWithQuotaYearsRow {
   full_name: string
   email: string
   phone: string
-  member_quotas: Array<{
-    id: string
-    year: number
-  }> | null
+  member_quotas:
+    | Array<{
+        id: string
+        year: number
+      }>
+    | null
 }
 
 const getTodayDate = () => {
-  return new Date().toISOString().slice(0, 10)
+  return new Date()
+    .toISOString()
+    .slice(0, 10)
 }
 
-const getSingleRelation = <T>(relation: SupabaseRelation<T>) => {
+const getSingleRelation = <T>(
+  relation: SupabaseRelation<T>
+) => {
   if (Array.isArray(relation)) {
     return relation[0] || null
   }
@@ -70,22 +87,32 @@ const getSingleRelation = <T>(relation: SupabaseRelation<T>) => {
   return relation
 }
 
-const mapQuota = (quota: SupabaseQuotaRow): AdminQuota => {
-  const member = getSingleRelation(quota.members)
+const mapQuota = (
+  quota: SupabaseQuotaRow
+): AdminQuota => {
+  const member =
+    getSingleRelation(quota.members)
 
   return {
     id: quota.id,
     memberId: quota.member_id,
-    memberNumber: member?.number || 'Sem número',
-    memberFullName: member?.full_name || 'Sócio removido',
-    memberEmail: member?.email || '',
-    memberPhone: member?.phone || '',
-    memberStatus: member?.status || 'inactive',
+    memberNumber:
+      member?.number || 'Sem número',
+    memberFullName:
+      member?.full_name || 'Sócio removido',
+    memberEmail:
+      member?.email || '',
+    memberPhone:
+      member?.phone || '',
+    memberStatus:
+      member?.status || 'inactive',
     year: quota.year,
     amount: Number(quota.amount),
     status: quota.status,
-    paidAt: quota.paid_at || undefined,
-    createdAt: quota.created_at
+    paidAt:
+      quota.paid_at || undefined,
+    createdAt:
+      quota.created_at
   }
 }
 
@@ -103,17 +130,22 @@ const mapMemberWithoutQuota = (
 
 export const useSupabaseAdminQuotas = () => {
   const getQuotas = async () => {
-    const supabase = useSupabaseClient()
+    const supabase =
+      useSupabaseClient()
 
     if (!supabase) {
       return {
         success: false,
-        error: 'Supabase ainda não está configurado.',
+        error:
+          'Supabase ainda não está configurado.',
         quotas: []
       }
     }
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error
+    } = await supabase
       .from('member_quotas')
       .select(`
         id,
@@ -150,84 +182,108 @@ export const useSupabaseAdminQuotas = () => {
     return {
       success: true,
       error: null,
-      quotas: (data || []).map((quota) => {
-        return mapQuota(quota as unknown as SupabaseQuotaRow)
-      })
+      quotas: (data || []).map(
+        (quota) => {
+          return mapQuota(
+            quota as unknown as SupabaseQuotaRow
+          )
+        }
+      )
     }
   }
 
-  const getActiveMembersWithoutQuota = async (year: number) => {
-    const supabase = useSupabaseClient()
+  const getActiveMembersWithoutQuota =
+    async (year: number) => {
+      const supabase =
+        useSupabaseClient()
 
-    if (!supabase) {
-      return {
-        success: false,
-        error: 'Supabase ainda não está configurado.',
-        members: []
+      if (!supabase) {
+        return {
+          success: false,
+          error:
+            'Supabase ainda não está configurado.',
+          members: []
+        }
       }
-    }
 
-    const { data, error } = await supabase
-      .from('members')
-      .select(`
-        id,
-        number,
-        full_name,
-        email,
-        phone,
-        member_quotas (
+      const {
+        data,
+        error
+      } = await supabase
+        .from('members')
+        .select(`
           id,
-          year
-        )
-      `)
-      .eq('status', 'active')
-      .order('number', {
-        ascending: true
-      })
+          number,
+          full_name,
+          email,
+          phone,
+          member_quotas (
+            id,
+            year
+          )
+        `)
+        .eq('status', 'active')
+        .order('number', {
+          ascending: true
+        })
 
-    if (error) {
+      if (error) {
+        return {
+          success: false,
+          error: error.message,
+          members: []
+        }
+      }
+
+      const membersWithoutQuota = (
+        (data || []) as unknown as
+          SupabaseMemberWithQuotaYearsRow[]
+      )
+        .filter((member) => {
+          return !(
+            member.member_quotas || []
+          ).some((quota) => {
+            return quota.year === year
+          })
+        })
+        .map((member) => {
+          return mapMemberWithoutQuota(
+            member
+          )
+        })
+
       return {
-        success: false,
-        error: error.message,
-        members: []
+        success: true,
+        error: null,
+        members: membersWithoutQuota
       }
     }
-
-    const membersWithoutQuota = ((data || []) as unknown as SupabaseMemberWithQuotaYearsRow[])
-      .filter((member) => {
-        return !(member.member_quotas || []).some((quota) => {
-          return quota.year === year
-        })
-      })
-      .map((member) => {
-        return mapMemberWithoutQuota(member)
-      })
-
-    return {
-      success: true,
-      error: null,
-      members: membersWithoutQuota
-    }
-  }
 
   const updateQuotaStatus = async (
     quotaId: string,
     status: AdminQuotaStatus
   ) => {
-    const supabase = useSupabaseClient()
+    const supabase =
+      useSupabaseClient()
 
     if (!supabase) {
       return {
         success: false,
-        error: 'Supabase ainda não está configurado.'
+        error:
+          'Supabase ainda não está configurado.'
       }
     }
 
-    const { error } = await supabase
+    const {
+      error
+    } = await supabase
       .from('member_quotas')
       .update({
         status,
-        paid_at: status === 'paid' ? getTodayDate() : null
+        paid_at:
+          status === 'paid'
+            ? getTodayDate()
+            : null
       })
       .eq('id', quotaId)
 
@@ -249,16 +305,28 @@ export const useSupabaseAdminQuotas = () => {
     year: number,
     amount = 12
   ) => {
-    const supabase = useSupabaseClient()
+    const supabase =
+      useSupabaseClient()
 
     if (!supabase) {
       return {
         success: false,
-        error: 'Supabase ainda não está configurado.'
+        error:
+          'Supabase ainda não está configurado.'
       }
     }
 
-    const { error } = await supabase
+    if (amount <= 0) {
+      return {
+        success: false,
+        error:
+          'O valor da quota deve ser superior a zero.'
+      }
+    }
+
+    const {
+      error
+    } = await supabase
       .from('member_quotas')
       .insert({
         member_id: memberId,
@@ -284,46 +352,37 @@ export const useSupabaseAdminQuotas = () => {
     year: number,
     amount = 12
   ) => {
-    const supabase = useSupabaseClient()
+    const supabase =
+      useSupabaseClient()
 
     if (!supabase) {
       return {
         success: false,
-        error: 'Supabase ainda não está configurado.',
+        error:
+          'Supabase ainda não está configurado.',
         createdCount: 0
       }
     }
 
-    const membersResult = await getActiveMembersWithoutQuota(year)
-
-    if (!membersResult.success) {
+    if (amount <= 0) {
       return {
         success: false,
-        error: membersResult.error,
+        error:
+          'O valor da quota deve ser superior a zero.',
         createdCount: 0
       }
     }
 
-    if (!membersResult.members.length) {
-      return {
-        success: true,
-        error: null,
-        createdCount: 0
+    const {
+      data,
+      error
+    } = await supabase.rpc(
+      'create_missing_member_quotas',
+      {
+        p_year: year,
+        p_amount: amount
       }
-    }
-
-    const quotasToCreate = membersResult.members.map((member) => {
-      return {
-        member_id: member.id,
-        year,
-        amount,
-        status: 'pending' as AdminQuotaStatus
-      }
-    })
-
-    const { error } = await supabase
-      .from('member_quotas')
-      .insert(quotasToCreate)
+    )
 
     if (error) {
       return {
@@ -336,7 +395,8 @@ export const useSupabaseAdminQuotas = () => {
     return {
       success: true,
       error: null,
-      createdCount: quotasToCreate.length
+      createdCount:
+        Number(data) || 0
     }
   }
 
