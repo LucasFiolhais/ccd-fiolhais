@@ -191,16 +191,12 @@ const saveContactData = async () => {
   saveSuccess.value = ''
 
   if (!editForm.phone.trim()) {
-    saveError.value =
-      'Introduz o teu telefone.'
-
+    saveError.value = 'Introduz o teu telefone.'
     return
   }
 
   if (!editForm.address.trim()) {
-    saveError.value =
-      'Introduz a tua morada.'
-
+    saveError.value = 'Introduz a tua morada.'
     return
   }
 
@@ -222,11 +218,8 @@ const saveContactData = async () => {
   }
 
   if (member.value) {
-    member.value.phone =
-      editForm.phone.trim()
-
-    member.value.address =
-      editForm.address.trim()
+    member.value.phone = editForm.phone.trim()
+    member.value.address = editForm.address.trim()
   }
 
   isEditing.value = false
@@ -305,14 +298,12 @@ onMounted(async () => {
           </button>
         </header>
 
-        <nav class="grid gap-4 sm:grid-cols-3">
+        <nav class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <NuxtLink
             to="/area-socio"
             class="rounded-2xl border border-amber-400 bg-amber-50 p-5"
           >
-            <p class="text-2xl">
-              👤
-            </p>
+            <p class="text-2xl">👤</p>
 
             <p class="mt-3 font-bold text-gray-950">
               Resumo
@@ -327,9 +318,7 @@ onMounted(async () => {
             to="/area-socio/quotas"
             class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
           >
-            <p class="text-2xl">
-              💶
-            </p>
+            <p class="text-2xl">💶</p>
 
             <p class="mt-3 font-bold text-gray-950">
               Quotas
@@ -344,9 +333,7 @@ onMounted(async () => {
             to="/area-socio/eventos"
             class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
           >
-            <p class="text-2xl">
-              🎟️
-            </p>
+            <p class="text-2xl">🎟️</p>
 
             <p class="mt-3 font-bold text-gray-950">
               Eventos
@@ -354,6 +341,21 @@ onMounted(async () => {
 
             <p class="mt-1 text-sm text-gray-600">
               As minhas inscrições
+            </p>
+          </NuxtLink>
+
+          <NuxtLink
+            to="/area-socio/seguranca"
+            class="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <p class="text-2xl">🔐</p>
+
+            <p class="mt-3 font-bold text-gray-950">
+              Segurança
+            </p>
+
+            <p class="mt-1 text-sm text-gray-600">
+              Palavra-passe da conta
             </p>
           </NuxtLink>
         </nav>
