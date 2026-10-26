@@ -599,3 +599,140 @@ from authenticated;
 grant execute
 on function public.create_missing_member_quotas(integer, numeric)
 to authenticated;
+
+create or replace function public.approve_member_application(
+  p_application_id uuid
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  application_record public.member_applications%rowtype;
+  created_member_id uuid;
+  next_member_number text;
+  next_number integer;
+begin
+  if not public.is_admin() then
+    raise exception 'Não tens permissão para aprovar pedidos de sócio.';
+  end if;
+
+  select *
+  into application_record
+  from public.member_applications
+  where id = p_application_id
+  for update;
+
+  if not found then
+    raise exception 'O pedido de sócio não existe.';
+  end if;
+
+  if application_record.status = 'approved' then
+    raise exception 'Este pedido já foi aprovado.';
+  end if;
+
+  if application_record.status = 'rejected' then
+    raise exception 'Reabre o pedido antes de o aprovar.';
+  end if;
+
+  if not application_record.accepts_data_treatment then
+    raise exception 'O pedido não possui autorização para tratamento de dados.';
+  end if;
+
+  loop
+    select
+      coalesce(
+        max(
+          case
+            when number ~ '^[0-9]+$'
+            then number::integer
+            else null
+          end
+        ),
+        0
+      ) + 1
+    into next_number
+    from public.members;
+
+    next_member_number :=
+      lpad(next_number::text, 3, '0');
+
+    begin
+      insert into public.members (
+        number,
+        full_name,
+        email,
+        phone,
+        address,
+        birth_date,
+        joined_at,
+        status,
+        notes
+      )
+      values (
+        next_member_number,
+        application_record.full_name,
+        application_record.email,
+        application_record.phone,
+        application_record.address,
+        application_record.birth_date,
+        current_date,
+        'active',
+        application_record.notes
+      )
+      returning id
+      into created_member_id;
+
+      exit;
+
+    exception
+      when unique_violation then
+        if exists (
+          select 1
+          from public.members
+          where number = next_member_number
+        ) then
+          continue;
+        end if;
+
+        raise;
+    end;
+  end loop;
+
+  insert into public.member_quotas (
+    member_id,
+    year,
+    amount,
+    status
+  )
+  values (
+    created_member_id,
+    extract(year from current_date)::integer,
+    12,
+    'pending'
+  );
+
+  update public.member_applications
+  set status = 'approved'
+  where id = p_application_id;
+
+  return next_member_number;
+end;
+$$;
+
+revoke all
+on function public.approve_member_application(uuid)
+from public;
+
+revoke all
+on function public.approve_member_application(uuid)
+from anon;
+
+revoke all
+on function public.approve_member_application(uuid)
+from authenticated;
+
+grant execute
+on function public.approve_member_application(uuid)
+to authenticated;

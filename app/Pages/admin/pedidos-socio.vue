@@ -13,7 +13,9 @@ useHead({
   title: 'Pedidos de Sócio'
 })
 
-type StatusFilter = 'all' | MemberApplicationStatus
+type StatusFilter =
+  | 'all'
+  | MemberApplicationStatus
 
 const {
   getMemberApplications,
@@ -21,12 +23,24 @@ const {
   createMemberFromApplication
 } = useSupabaseAdminMemberApplications()
 
-const applications = ref<MemberApplication[]>([])
+const applications =
+  ref<MemberApplication[]>([])
+
 const searchTerm = ref('')
-const selectedStatus = ref<StatusFilter>('all')
+const selectedStatus =
+  ref<StatusFilter>('all')
+
 const isLoading = ref(true)
+const isSubmitting = ref(false)
+
 const submitError = ref('')
 const successMessage = ref('')
+
+const confirmingApplicationId =
+  ref<string | null>(null)
+
+const createdMemberNumber =
+  ref<string | null>(null)
 
 const statusOptions: Array<{
   label: string
@@ -50,7 +64,9 @@ const statusOptions: Array<{
   }
 ]
 
-const getStatusLabel = (status: MemberApplicationStatus) => {
+const getStatusLabel = (
+  status: MemberApplicationStatus
+) => {
   if (status === 'new') {
     return 'Novo'
   }
@@ -62,7 +78,9 @@ const getStatusLabel = (status: MemberApplicationStatus) => {
   return 'Rejeitado'
 }
 
-const getStatusClass = (status: MemberApplicationStatus) => {
+const getStatusClass = (
+  status: MemberApplicationStatus
+) => {
   if (status === 'new') {
     return 'border-amber-200 bg-amber-50 text-amber-800'
   }
@@ -74,21 +92,35 @@ const getStatusClass = (status: MemberApplicationStatus) => {
   return 'border-red-200 bg-red-50 text-red-700'
 }
 
-const formatDate = (value: string) => {
-  return new Intl.DateTimeFormat('pt-PT', {
-    dateStyle: 'short',
-    timeStyle: 'short'
-  }).format(new Date(value))
+const formatDate = (
+  value: string
+) => {
+  return new Intl.DateTimeFormat(
+    'pt-PT',
+    {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    }
+  ).format(
+    new Date(value)
+  )
 }
 
-const formatBirthDate = (value?: string) => {
+const formatBirthDate = (
+  value?: string
+) => {
   if (!value) {
     return 'Não indicada'
   }
 
-  return new Intl.DateTimeFormat('pt-PT', {
-    dateStyle: 'short'
-  }).format(new Date(value))
+  return new Intl.DateTimeFormat(
+    'pt-PT',
+    {
+      dateStyle: 'short'
+    }
+  ).format(
+    new Date(`${value}T00:00:00`)
+  )
 }
 
 const totalApplications = computed(() => {
@@ -96,135 +128,256 @@ const totalApplications = computed(() => {
 })
 
 const newApplications = computed(() => {
-  return applications.value.filter((application) => application.status === 'new').length
+  return applications.value.filter(
+    (application) => {
+      return application.status === 'new'
+    }
+  ).length
 })
 
 const approvedApplications = computed(() => {
-  return applications.value.filter((application) => application.status === 'approved').length
+  return applications.value.filter(
+    (application) => {
+      return application.status ===
+        'approved'
+    }
+  ).length
 })
 
 const rejectedApplications = computed(() => {
-  return applications.value.filter((application) => application.status === 'rejected').length
+  return applications.value.filter(
+    (application) => {
+      return application.status ===
+        'rejected'
+    }
+  ).length
 })
 
 const filteredApplications = computed(() => {
-  return applications.value.filter((application) => {
-    const searchValue = searchTerm.value.toLowerCase()
+  return applications.value.filter(
+    (application) => {
+      const searchValue =
+        searchTerm.value.toLowerCase()
 
-    const matchesSearch = [
-      application.fullName,
-      application.email,
-      application.phone,
-      application.address,
-      application.notes || ''
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(searchValue)
+      const matchesSearch = [
+        application.fullName,
+        application.email,
+        application.phone,
+        application.address,
+        application.notes || ''
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(searchValue)
 
-    const matchesStatus =
-      selectedStatus.value === 'all' ||
-      application.status === selectedStatus.value
+      const matchesStatus =
+        selectedStatus.value === 'all' ||
+        application.status ===
+          selectedStatus.value
 
-    return matchesSearch && matchesStatus
-  })
+      return (
+        matchesSearch &&
+        matchesStatus
+      )
+    }
+  )
 })
 
-const loadApplications = async () => {
+const loadApplications = async (
+  clearFeedback = true
+) => {
   isLoading.value = true
-  submitError.value = ''
-  successMessage.value = ''
 
-  const result = await getMemberApplications()
+  if (clearFeedback) {
+    submitError.value = ''
+    successMessage.value = ''
+    createdMemberNumber.value = null
+  }
+
+  const result =
+    await getMemberApplications()
 
   isLoading.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível carregar os pedidos de sócio.'
+    submitError.value =
+      result.error ||
+      'Não foi possível carregar os pedidos de sócio.'
+
     return
   }
 
-  applications.value = result.applications
+  applications.value =
+    result.applications
 }
 
 const updateLocalApplicationStatus = (
   applicationId: string,
   status: MemberApplicationStatus
 ) => {
-  applications.value = applications.value.map((application) => {
-    if (application.id !== applicationId) {
-      return application
+  applications.value =
+    applications.value.map(
+      (application) => {
+        if (
+          application.id !==
+          applicationId
+        ) {
+          return application
+        }
+
+        return {
+          ...application,
+          status
+        }
+      }
+    )
+}
+
+const requestApproval = (
+  application: MemberApplication
+) => {
+  submitError.value = ''
+  successMessage.value = ''
+  createdMemberNumber.value = null
+
+  if (
+    application.status !== 'new'
+  ) {
+    submitError.value =
+      'Apenas pedidos novos podem ser aprovados.'
+
+    return
+  }
+
+  if (
+    !application.acceptsDataTreatment
+  ) {
+    submitError.value =
+      'Este pedido não possui autorização para tratamento dos dados.'
+
+    return
+  }
+
+  confirmingApplicationId.value =
+    application.id
+}
+
+const cancelApproval = () => {
+  confirmingApplicationId.value = null
+}
+
+const handleApproveAndCreateMember =
+  async (
+    application: MemberApplication
+  ) => {
+    submitError.value = ''
+    successMessage.value = ''
+    createdMemberNumber.value = null
+
+    isSubmitting.value = true
+
+    const result =
+      await createMemberFromApplication(
+        application
+      )
+
+    isSubmitting.value = false
+    confirmingApplicationId.value = null
+
+    if (!result.success) {
+      submitError.value =
+        result.error ||
+        'Não foi possível aprovar o pedido e criar o sócio.'
+
+      return
     }
 
-    return {
-      ...application,
-      status
-    }
-  })
-}
+    updateLocalApplicationStatus(
+      application.id,
+      'approved'
+    )
 
-const handleApprove = async (applicationId: string) => {
+    createdMemberNumber.value =
+      result.memberNumber
+
+    successMessage.value =
+      `Pedido aprovado e sócio criado com o número ${result.memberNumber}.`
+  }
+
+const handleReject = async (
+  applicationId: string
+) => {
   submitError.value = ''
   successMessage.value = ''
+  createdMemberNumber.value = null
 
-  const result = await updateMemberApplicationStatus(applicationId, 'approved')
+  isSubmitting.value = true
+
+  const result =
+    await updateMemberApplicationStatus(
+      applicationId,
+      'rejected'
+    )
+
+  isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível aprovar o pedido.'
+    submitError.value =
+      result.error ||
+      'Não foi possível rejeitar o pedido.'
+
     return
   }
 
-  updateLocalApplicationStatus(applicationId, 'approved')
-  successMessage.value = 'Pedido de sócio aprovado com sucesso.'
+  updateLocalApplicationStatus(
+    applicationId,
+    'rejected'
+  )
+
+  confirmingApplicationId.value = null
+
+  successMessage.value =
+    'Pedido de sócio rejeitado.'
 }
 
-const handleCreateMember = async (application: MemberApplication) => {
+const handleMarkAsNew = async (
+  applicationId: string
+) => {
   submitError.value = ''
   successMessage.value = ''
+  createdMemberNumber.value = null
 
-  const result = await createMemberFromApplication(application)
+  isSubmitting.value = true
+
+  const result =
+    await updateMemberApplicationStatus(
+      applicationId,
+      'new'
+    )
+
+  isSubmitting.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível criar o sócio.'
+    submitError.value =
+      result.error ||
+      'Não foi possível reabrir o pedido.'
+
     return
   }
 
-  updateLocalApplicationStatus(application.id, 'approved')
-  successMessage.value = `Sócio criado com sucesso com o número ${result.memberNumber}.`
-}
+  updateLocalApplicationStatus(
+    applicationId,
+    'new'
+  )
 
-const handleReject = async (applicationId: string) => {
-  submitError.value = ''
-  successMessage.value = ''
-
-  const result = await updateMemberApplicationStatus(applicationId, 'rejected')
-
-  if (!result.success) {
-    submitError.value = result.error || 'Não foi possível rejeitar o pedido.'
-    return
-  }
-
-  updateLocalApplicationStatus(applicationId, 'rejected')
-  successMessage.value = 'Pedido de sócio rejeitado.'
-}
-
-const handleMarkAsNew = async (applicationId: string) => {
-  submitError.value = ''
-  successMessage.value = ''
-
-  const result = await updateMemberApplicationStatus(applicationId, 'new')
-
-  if (!result.success) {
-    submitError.value = result.error || 'Não foi possível reabrir o pedido.'
-    return
-  }
-
-  updateLocalApplicationStatus(applicationId, 'new')
-  successMessage.value = 'Pedido marcado novamente como novo.'
+  successMessage.value =
+    'Pedido marcado novamente como novo.'
 }
 
 const handleReload = async () => {
-  await loadApplications()
+  confirmingApplicationId.value = null
+
+  await loadApplications(true)
 }
 
 onMounted(async () => {
@@ -234,31 +387,46 @@ onMounted(async () => {
 
 <template>
   <UContainer class="py-8">
-    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div
+      class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+    >
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
+        <p
+          class="text-sm font-semibold uppercase tracking-wide text-amber-600"
+        >
           Administração
         </p>
 
-        <h1 class="mt-2 text-3xl font-bold text-gray-950">
+        <h1
+          class="mt-2 text-3xl font-bold text-gray-950"
+        >
           Pedidos de inscrição de sócio
         </h1>
 
-        <p class="mt-2 text-gray-600">
-          Consulta e valida os pedidos enviados através do formulário público “Torne-se sócio”.
+        <p
+          class="mt-2 text-gray-600"
+        >
+          Consulta e valida os pedidos enviados através do formulário público
+          “Torne-se sócio”.
         </p>
       </div>
 
       <button
         type="button"
-        class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+        class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+        :disabled="
+          isLoading ||
+          isSubmitting
+        "
         @click="handleReload"
       >
         Recarregar pedidos
       </button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div
+      class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+    >
       <AdminStatCard
         label="Total"
         :value="totalApplications"
@@ -308,11 +476,26 @@ onMounted(async () => {
       <p class="mt-2">
         {{ successMessage }}
       </p>
+
+      <NuxtLink
+        v-if="createdMemberNumber"
+        :to="`/admin/socios/${createdMemberNumber}`"
+        class="mt-4 inline-block rounded-xl border border-emerald-400 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+      >
+        Abrir sócio nº
+        {{ createdMemberNumber }}
+      </NuxtLink>
     </div>
 
-    <div class="mt-8 rounded-3xl border border-amber-200 bg-white shadow-sm">
-      <div class="border-b border-gray-200 p-6">
-        <div class="grid gap-4 lg:grid-cols-[1fr_260px]">
+    <div
+      class="mt-8 rounded-3xl border border-amber-200 bg-white shadow-sm"
+    >
+      <div
+        class="border-b border-gray-200 p-6"
+      >
+        <div
+          class="grid gap-4 lg:grid-cols-[1fr_260px]"
+        >
           <input
             v-model="searchTerm"
             type="search"
@@ -343,7 +526,9 @@ onMounted(async () => {
       </div>
 
       <div
-        v-else-if="filteredApplications.length"
+        v-else-if="
+          filteredApplications.length
+        "
         class="divide-y divide-gray-200"
       >
         <article
@@ -351,114 +536,285 @@ onMounted(async () => {
           :key="application.id"
           class="p-6"
         >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div
+            class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+          >
             <div>
-              <div class="flex flex-wrap items-center gap-3">
-                <h2 class="text-xl font-bold text-gray-950">
+              <div
+                class="flex flex-wrap items-center gap-3"
+              >
+                <h2
+                  class="text-xl font-bold text-gray-950"
+                >
                   {{ application.fullName }}
                 </h2>
 
                 <span
                   class="rounded-full border px-3 py-1 text-xs font-bold"
-                  :class="getStatusClass(application.status)"
+                  :class="
+                    getStatusClass(
+                      application.status
+                    )
+                  "
                 >
-                  {{ getStatusLabel(application.status) }}
+                  {{
+                    getStatusLabel(
+                      application.status
+                    )
+                  }}
                 </span>
               </div>
 
-              <p class="mt-2 text-sm text-gray-500">
-                Pedido enviado em {{ formatDate(application.createdAt) }}
+              <p
+                class="mt-2 text-sm text-gray-500"
+              >
+                Pedido enviado em
+                {{
+                  formatDate(
+                    application.createdAt
+                  )
+                }}
               </p>
             </div>
 
-            <div class="flex flex-wrap gap-2">
-
+            <div
+              class="flex flex-wrap gap-2"
+            >
               <button
-  v-if="application.status !== 'approved'"
-  type="button"
-  class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
-  @click="handleCreateMember(application)"
->
-  Criar sócio
-</button>
-
-              <button
-                v-if="application.status !== 'approved'"
+                v-if="
+                  application.status ===
+                  'new'
+                "
                 type="button"
-                class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                @click="handleApprove(application.id)"
+                class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="
+                  requestApproval(
+                    application
+                  )
+                "
               >
-                Aprovar
+                Aprovar e criar sócio
               </button>
 
               <button
-                v-if="application.status !== 'rejected'"
+                v-if="
+                  application.status ===
+                  'new'
+                "
                 type="button"
-                class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-                @click="handleReject(application.id)"
+                class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="
+                  handleReject(
+                    application.id
+                  )
+                "
               >
                 Rejeitar
               </button>
 
               <button
-                v-if="application.status !== 'new'"
+                v-if="
+                  application.status ===
+                  'rejected'
+                "
                 type="button"
-                class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                @click="handleMarkAsNew(application.id)"
+                class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="
+                  handleMarkAsNew(
+                    application.id
+                  )
+                "
               >
                 Reabrir
               </button>
             </div>
           </div>
 
-          <div class="mt-5 grid gap-4 md:grid-cols-2">
-            <div class="rounded-2xl bg-gray-50 p-4">
-              <p class="text-sm font-semibold text-gray-500">
-                Email
+          <div
+            v-if="
+              confirmingApplicationId ===
+              application.id
+            "
+            class="mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 p-5"
+          >
+            <h3
+              class="text-lg font-bold text-emerald-950"
+            >
+              Confirmar aprovação
+            </h3>
+
+            <p
+              class="mt-2 text-sm text-emerald-900"
+            >
+              Ao confirmar, será criado um novo registo de sócio ativo para
+              {{ application.fullName }}, será atribuído automaticamente um
+              número de sócio e será criada a quota do ano atual.
+            </p>
+
+            <div
+              class="mt-4 rounded-xl border border-emerald-200 bg-white p-4"
+            >
+              <p
+                class="text-sm font-semibold text-gray-700"
+              >
+                {{ application.fullName }}
               </p>
 
-              <p class="mt-1 break-all text-gray-950">
+              <p
+                class="mt-1 text-sm text-gray-600"
+              >
                 {{ application.email }}
               </p>
-            </div>
 
-            <div class="rounded-2xl bg-gray-50 p-4">
-              <p class="text-sm font-semibold text-gray-500">
-                Telefone
-              </p>
-
-              <p class="mt-1 text-gray-950">
+              <p
+                class="mt-1 text-sm text-gray-600"
+              >
                 {{ application.phone }}
               </p>
             </div>
 
-            <div class="rounded-2xl bg-gray-50 p-4">
-              <p class="text-sm font-semibold text-gray-500">
-                Data de nascimento
+            <div
+              class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end"
+            >
+              <button
+                type="button"
+                class="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="cancelApproval"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSubmitting"
+                @click="
+                  handleApproveAndCreateMember(
+                    application
+                  )
+                "
+              >
+                {{
+                  isSubmitting
+                    ? 'A criar sócio...'
+                    : 'Confirmar aprovação'
+                }}
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="mt-5 grid gap-4 md:grid-cols-2"
+          >
+            <div
+              class="rounded-2xl bg-gray-50 p-4"
+            >
+              <p
+                class="text-sm font-semibold text-gray-500"
+              >
+                Email
               </p>
 
-              <p class="mt-1 text-gray-950">
-                {{ formatBirthDate(application.birthDate) }}
+              <p
+                class="mt-1 break-all text-gray-950"
+              >
+                {{ application.email }}
               </p>
             </div>
 
-            <div class="rounded-2xl bg-gray-50 p-4">
-              <p class="text-sm font-semibold text-gray-500">
+            <div
+              class="rounded-2xl bg-gray-50 p-4"
+            >
+              <p
+                class="text-sm font-semibold text-gray-500"
+              >
+                Telefone
+              </p>
+
+              <p
+                class="mt-1 text-gray-950"
+              >
+                {{ application.phone }}
+              </p>
+            </div>
+
+            <div
+              class="rounded-2xl bg-gray-50 p-4"
+            >
+              <p
+                class="text-sm font-semibold text-gray-500"
+              >
+                Data de nascimento
+              </p>
+
+              <p
+                class="mt-1 text-gray-950"
+              >
+                {{
+                  formatBirthDate(
+                    application.birthDate
+                  )
+                }}
+              </p>
+            </div>
+
+            <div
+              class="rounded-2xl bg-gray-50 p-4"
+            >
+              <p
+                class="text-sm font-semibold text-gray-500"
+              >
                 Notificações
               </p>
 
-              <p class="mt-1 text-gray-950">
-                {{ application.wantsNotifications ? 'Sim' : 'Não' }}
+              <p
+                class="mt-1 text-gray-950"
+              >
+                {{
+                  application.wantsNotifications
+                    ? 'Sim'
+                    : 'Não'
+                }}
+              </p>
+            </div>
+
+            <div
+              class="rounded-2xl bg-gray-50 p-4 md:col-span-2"
+            >
+              <p
+                class="text-sm font-semibold text-gray-500"
+              >
+                Tratamento de dados
+              </p>
+
+              <p
+                class="mt-1 text-gray-950"
+              >
+                {{
+                  application.acceptsDataTreatment
+                    ? 'Autorizado'
+                    : 'Não autorizado'
+                }}
               </p>
             </div>
           </div>
 
-          <div class="mt-4 rounded-2xl bg-gray-50 p-4">
-            <p class="text-sm font-semibold text-gray-500">
+          <div
+            class="mt-4 rounded-2xl bg-gray-50 p-4"
+          >
+            <p
+              class="text-sm font-semibold text-gray-500"
+            >
               Morada
             </p>
 
-            <p class="mt-1 whitespace-pre-line text-gray-950">
+            <p
+              class="mt-1 whitespace-pre-line text-gray-950"
+            >
               {{ application.address }}
             </p>
           </div>
@@ -467,16 +823,22 @@ onMounted(async () => {
             v-if="application.notes"
             class="mt-4 rounded-2xl bg-gray-50 p-4"
           >
-            <p class="text-sm font-semibold text-gray-500">
+            <p
+              class="text-sm font-semibold text-gray-500"
+            >
               Observações
             </p>
 
-            <p class="mt-1 whitespace-pre-line text-gray-950">
+            <p
+              class="mt-1 whitespace-pre-line text-gray-950"
+            >
               {{ application.notes }}
             </p>
           </div>
 
-          <div class="mt-4 flex flex-wrap gap-4">
+          <div
+            class="mt-4 flex flex-wrap gap-4"
+          >
             <a
               :href="`mailto:${application.email}`"
               class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
