@@ -537,3 +537,65 @@ from public;
 grant execute
 on function public.update_my_member_contact(text, text)
 to authenticated;
+
+create or replace function public.create_missing_member_quotas(
+  p_year integer,
+  p_amount numeric default 12
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  created_count integer;
+begin
+  if not public.is_admin() then
+    raise exception 'Não tens permissão para gerar quotas.';
+  end if;
+
+  if p_year < 2000 then
+    raise exception 'O ano indicado não é válido.';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'O valor da quota deve ser superior a zero.';
+  end if;
+
+  insert into public.member_quotas (
+    member_id,
+    year,
+    amount,
+    status
+  )
+  select
+    member.id,
+    p_year,
+    p_amount,
+    'pending'
+  from public.members as member
+  where member.status = 'active'
+  on conflict (member_id, year)
+  do nothing;
+
+  get diagnostics created_count = row_count;
+
+  return created_count;
+end;
+$$;
+
+revoke all
+on function public.create_missing_member_quotas(integer, numeric)
+from public;
+
+revoke all
+on function public.create_missing_member_quotas(integer, numeric)
+from anon;
+
+revoke all
+on function public.create_missing_member_quotas(integer, numeric)
+from authenticated;
+
+grant execute
+on function public.create_missing_member_quotas(integer, numeric)
+to authenticated;
