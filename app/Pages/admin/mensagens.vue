@@ -23,7 +23,10 @@ const {
 const messages = ref<ContactMessage[]>([])
 const searchTerm = ref('')
 const selectedStatus = ref<StatusFilter>('all')
+
 const isLoading = ref(true)
+const updatingMessageId = ref<string | null>(null)
+
 const submitError = ref('')
 const successMessage = ref('')
 
@@ -49,7 +52,9 @@ const statusOptions: Array<{
   }
 ]
 
-const getStatusLabel = (status: ContactMessageStatus) => {
+const getStatusLabel = (
+  status: ContactMessageStatus
+) => {
   if (status === 'new') {
     return 'Nova'
   }
@@ -61,7 +66,9 @@ const getStatusLabel = (status: ContactMessageStatus) => {
   return 'Arquivada'
 }
 
-const getStatusClass = (status: ContactMessageStatus) => {
+const getStatusClass = (
+  status: ContactMessageStatus
+) => {
   if (status === 'new') {
     return 'border-amber-200 bg-amber-50 text-amber-800'
   }
@@ -70,14 +77,21 @@ const getStatusClass = (status: ContactMessageStatus) => {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700'
   }
 
-  return 'border-gray-200 bg-gray-50 text-gray-600'
+  return 'border-gray-200 bg-gray-100 text-gray-600'
 }
 
-const formatDate = (value: string) => {
-  return new Intl.DateTimeFormat('pt-PT', {
-    dateStyle: 'short',
-    timeStyle: 'short'
-  }).format(new Date(value))
+const formatDate = (
+  value: string
+) => {
+  return new Intl.DateTimeFormat(
+    'pt-PT',
+    {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    }
+  ).format(
+    new Date(value)
+  )
 }
 
 const totalMessages = computed(() => {
@@ -85,103 +99,169 @@ const totalMessages = computed(() => {
 })
 
 const newMessages = computed(() => {
-  return messages.value.filter((message) => message.status === 'new').length
+  return messages.value.filter(
+    (message) => {
+      return message.status === 'new'
+    }
+  ).length
 })
 
 const readMessages = computed(() => {
-  return messages.value.filter((message) => message.status === 'read').length
+  return messages.value.filter(
+    (message) => {
+      return message.status === 'read'
+    }
+  ).length
 })
 
 const archivedMessages = computed(() => {
-  return messages.value.filter((message) => message.status === 'archived').length
+  return messages.value.filter(
+    (message) => {
+      return message.status === 'archived'
+    }
+  ).length
 })
 
 const filteredMessages = computed(() => {
-  return messages.value.filter((message) => {
-    const searchValue = searchTerm.value.toLowerCase()
-
-    const matchesSearch = [
-      message.fullName,
-      message.email,
-      message.message
-    ]
-      .join(' ')
+  const searchValue =
+    searchTerm.value
+      .trim()
       .toLowerCase()
-      .includes(searchValue)
 
-    const matchesStatus =
-      selectedStatus.value === 'all' ||
-      message.status === selectedStatus.value
+  return messages.value.filter(
+    (message) => {
+      const matchesSearch = [
+        message.fullName,
+        message.email,
+        message.message
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(searchValue)
 
-    return matchesSearch && matchesStatus
-  })
+      const matchesStatus =
+        selectedStatus.value === 'all' ||
+        message.status ===
+          selectedStatus.value
+
+      return (
+        matchesSearch &&
+        matchesStatus
+      )
+    }
+  )
 })
 
-const loadMessages = async () => {
+const loadMessages = async (
+  clearFeedback = true
+) => {
   isLoading.value = true
-  submitError.value = ''
-  successMessage.value = ''
 
-  const result = await getContactMessages()
+  if (clearFeedback) {
+    submitError.value = ''
+    successMessage.value = ''
+  }
+
+  const result =
+    await getContactMessages()
 
   isLoading.value = false
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível carregar as mensagens.'
+    submitError.value =
+      result.error ||
+      'Não foi possível carregar as mensagens.'
+
     return
   }
 
-  messages.value = result.messages
+  messages.value =
+    result.messages
 }
 
 const updateLocalMessageStatus = (
   messageId: string,
   status: ContactMessageStatus
 ) => {
-  messages.value = messages.value.map((message) => {
-    if (message.id !== messageId) {
-      return message
-    }
+  messages.value =
+    messages.value.map(
+      (message) => {
+        if (
+          message.id !== messageId
+        ) {
+          return message
+        }
 
-    return {
-      ...message,
+        return {
+          ...message,
+          status
+        }
+      }
+    )
+}
+
+const handleStatusChange = async (
+  messageId: string,
+  status: ContactMessageStatus
+) => {
+  submitError.value = ''
+  successMessage.value = ''
+
+  updatingMessageId.value =
+    messageId
+
+  const result =
+    await updateContactMessageStatus(
+      messageId,
       status
-    }
-  })
-}
+    )
 
-const handleMarkAsRead = async (messageId: string) => {
-  submitError.value = ''
-  successMessage.value = ''
-
-  const result = await updateContactMessageStatus(messageId, 'read')
+  updatingMessageId.value = null
 
   if (!result.success) {
-    submitError.value = result.error || 'Não foi possível marcar a mensagem como lida.'
+    submitError.value =
+      result.error ||
+      'Não foi possível atualizar o estado da mensagem.'
+
     return
   }
 
-  updateLocalMessageStatus(messageId, 'read')
-  successMessage.value = 'Mensagem marcada como lida.'
-}
+  updateLocalMessageStatus(
+    messageId,
+    status
+  )
 
-const handleArchive = async (messageId: string) => {
-  submitError.value = ''
-  successMessage.value = ''
+  if (status === 'new') {
+    successMessage.value =
+      'Mensagem marcada novamente como nova.'
 
-  const result = await updateContactMessageStatus(messageId, 'archived')
-
-  if (!result.success) {
-    submitError.value = result.error || 'Não foi possível arquivar a mensagem.'
     return
   }
 
-  updateLocalMessageStatus(messageId, 'archived')
-  successMessage.value = 'Mensagem arquivada com sucesso.'
+  if (status === 'read') {
+    successMessage.value =
+      'Mensagem marcada como lida.'
+
+    return
+  }
+
+  successMessage.value =
+    'Mensagem arquivada com sucesso.'
 }
 
 const handleReload = async () => {
   await loadMessages()
+}
+
+const getReplyLink = (
+  message: ContactMessage
+) => {
+  const subject =
+    encodeURIComponent(
+      'Resposta do CCD Fiolhais'
+    )
+
+  return `mailto:${message.email}?subject=${subject}`
 }
 
 onMounted(async () => {
@@ -191,31 +271,42 @@ onMounted(async () => {
 
 <template>
   <UContainer class="py-8">
-    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div
+      class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+    >
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">
+        <p
+          class="text-sm font-semibold uppercase tracking-wide text-amber-600"
+        >
           Administração
         </p>
 
-        <h1 class="mt-2 text-3xl font-bold text-gray-950">
+        <h1
+          class="mt-2 text-3xl font-bold text-gray-950"
+        >
           Mensagens de contacto
         </h1>
 
-        <p class="mt-2 text-gray-600">
-          Consulta as mensagens enviadas através do formulário público de contactos.
+        <p
+          class="mt-2 text-gray-600"
+        >
+          Consulta e gere as mensagens enviadas através do formulário público de contactos.
         </p>
       </div>
 
       <button
         type="button"
-        class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
+        class="rounded-xl border border-amber-500 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+        :disabled="isLoading"
         @click="handleReload"
       >
         Recarregar mensagens
       </button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div
+      class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+    >
       <AdminStatCard
         label="Total"
         :value="totalMessages"
@@ -267,9 +358,15 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div class="mt-8 rounded-3xl border border-amber-200 bg-white shadow-sm">
-      <div class="border-b border-gray-200 p-6">
-        <div class="grid gap-4 lg:grid-cols-[1fr_260px]">
+    <div
+      class="mt-8 rounded-3xl border border-amber-200 bg-white shadow-sm"
+    >
+      <div
+        class="border-b border-gray-200 p-6"
+      >
+        <div
+          class="grid gap-4 lg:grid-cols-[1fr_260px]"
+        >
           <input
             v-model="searchTerm"
             type="search"
@@ -307,58 +404,166 @@ onMounted(async () => {
           v-for="message in filteredMessages"
           :key="message.id"
           class="p-6"
+          :class="
+            message.status === 'new'
+              ? 'bg-amber-50/40'
+              : ''
+          "
         >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div
+            class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+          >
             <div>
-              <div class="flex flex-wrap items-center gap-3">
-                <h2 class="text-xl font-bold text-gray-950">
+              <div
+                class="flex flex-wrap items-center gap-3"
+              >
+                <h2
+                  class="text-xl font-bold text-gray-950"
+                >
                   {{ message.fullName }}
                 </h2>
 
                 <span
                   class="rounded-full border px-3 py-1 text-xs font-bold"
-                  :class="getStatusClass(message.status)"
+                  :class="
+                    getStatusClass(
+                      message.status
+                    )
+                  "
                 >
-                  {{ getStatusLabel(message.status) }}
+                  {{
+                    getStatusLabel(
+                      message.status
+                    )
+                  }}
                 </span>
               </div>
 
-              <p class="mt-2 text-sm text-gray-500">
-                {{ message.email }} · {{ formatDate(message.createdAt) }}
+              <p
+                class="mt-2 text-sm text-gray-500"
+              >
+                {{ message.email }}
+                ·
+                {{
+                  formatDate(
+                    message.createdAt
+                  )
+                }}
               </p>
             </div>
 
-            <div class="flex flex-wrap gap-2">
+            <div
+              class="flex flex-wrap gap-2"
+            >
               <button
-                v-if="message.status !== 'read'"
+                v-if="
+                  message.status === 'new'
+                "
                 type="button"
-                class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                @click="handleMarkAsRead(message.id)"
+                class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="
+                  updatingMessageId ===
+                  message.id
+                "
+                @click="
+                  handleStatusChange(
+                    message.id,
+                    'read'
+                  )
+                "
               >
                 Marcar como lida
               </button>
 
               <button
-                v-if="message.status !== 'archived'"
+                v-if="
+                  message.status === 'read'
+                "
                 type="button"
-                class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                @click="handleArchive(message.id)"
+                class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="
+                  updatingMessageId ===
+                  message.id
+                "
+                @click="
+                  handleStatusChange(
+                    message.id,
+                    'new'
+                  )
+                "
+              >
+                Marcar como nova
+              </button>
+
+              <button
+                v-if="
+                  message.status !==
+                  'archived'
+                "
+                type="button"
+                class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="
+                  updatingMessageId ===
+                  message.id
+                "
+                @click="
+                  handleStatusChange(
+                    message.id,
+                    'archived'
+                  )
+                "
               >
                 Arquivar
+              </button>
+
+              <button
+                v-if="
+                  message.status ===
+                  'archived'
+                "
+                type="button"
+                class="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="
+                  updatingMessageId ===
+                  message.id
+                "
+                @click="
+                  handleStatusChange(
+                    message.id,
+                    'read'
+                  )
+                "
+              >
+                Reabrir
               </button>
             </div>
           </div>
 
-          <div class="mt-5 rounded-2xl bg-gray-50 p-5 leading-7 text-gray-700">
-            {{ message.message }}
+          <div
+            class="mt-5 rounded-2xl bg-gray-50 p-5 leading-7 text-gray-700"
+          >
+            <p
+              class="whitespace-pre-line"
+            >
+              {{ message.message }}
+            </p>
           </div>
 
-          <div class="mt-4">
+          <div
+            class="mt-4 flex flex-wrap items-center gap-4"
+          >
+            <a
+              :href="getReplyLink(message)"
+              class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-amber-400"
+            >
+              Responder por email
+            </a>
+
             <a
               :href="`mailto:${message.email}`"
               class="text-sm font-semibold text-amber-700 transition hover:text-amber-600"
             >
-              Responder por email
+              {{ message.email }}
             </a>
           </div>
         </article>
