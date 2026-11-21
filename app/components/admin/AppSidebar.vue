@@ -23,6 +23,11 @@ const links = [
     icon: '📅'
   },
   {
+    label: 'Inscrições',
+    to: '/admin/inscricoes',
+    icon: '🎟️'
+  },
+  {
     label: 'Quotas',
     to: '/admin/quotas',
     icon: '💶'
